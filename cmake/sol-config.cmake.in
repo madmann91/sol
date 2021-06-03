@@ -1,0 +1,10 @@
+# This file provides the imported target sol::sol, which can be used in a
+# call to `target_link_libraries` to pull the SoL library and all
+# its dependencies into another target.
+
+include(CMakeFindDependencyMacro)
+find_dependency(TIFF)
+find_dependency(JPEG)
+find_dependency(PNG)
+find_dependency(TBB)
+include("${CMAKE_CURRENT_LIST_DIR}/sol-targets.cmake")

@@ -37,3 +37,6 @@ if (TIFF_FOUND)
 endif ()
 
 set_target_properties(sol PROPERTIES CXX_STANDARD 20)
+
+export(TARGETS sol proto bvh tinyexr pcg NAMESPACE sol:: FILE ${PROJECT_BINARY_DIR}/sol-targets.cmake)
+configure_file(../cmake/sol-config.cmake.in ${PROJECT_BINARY_DIR}/sol-config.cmake @ONLY)
