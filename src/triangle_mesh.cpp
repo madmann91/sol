@@ -30,20 +30,20 @@ TriangleMesh::TriangleMesh(
     std::vector<size_t>&& indices,
     std::vector<proto::Vec3f>&& vertices,
     std::vector<proto::Vec3f>&& normals,
-    std::vector<proto::Vec2f>&& texcoords,
+    std::vector<proto::Vec2f>&& tex_coords,
     std::vector<const Bsdf*>&& bsdfs,
     std::unordered_map<size_t, const TriangleLight*> lights)
     : indices_(std::move(indices))
     , vertices_(std::move(vertices))
     , normals_(std::move(normals))
-    , texcoords_(std::move(texcoords))
+    , tex_coords_(std::move(tex_coords))
     , bsdfs_(std::move(bsdfs))
     , lights_(std::move(lights))
 {
     bvh_ = build_bvh();
 }
 
-std::optional<Hit> TriangleMesh::intersect(proto::Rayf& ray) const {
+std::optional<Hit> TriangleMesh::intersect_closest(proto::Rayf& ray) const {
     using HitInfo = std::tuple<size_t, proto::Vec3f, float, float>;
     auto hit_info = bvh::SingleRayTraverser<Bvh>::traverse<false>(ray, bvh_,
         [&] (proto::Rayf& ray, const Bvh::Node& leaf) {
@@ -62,23 +62,24 @@ std::optional<Hit> TriangleMesh::intersect(proto::Rayf& ray) const {
 
     auto [triangle_index, face_normal, u, v] = *hit_info;
     auto [i0, i1, i2] = triangle_indices(triangle_index);
-    auto normal    = proto::lerp(normals_[i0], normals_[i1], normals_[i2], u, v);
-    auto texcoords = proto::lerp(texcoords_[i0], texcoords_[i1], texcoords_[i2], u, v);
+    auto normal     = proto::lerp(normals_[i0], normals_[i1], normals_[i2], u, v);
+    auto tex_coords = proto::lerp(tex_coords_[i0], tex_coords_[i1], tex_coords_[i2], u, v);
 
     SurfaceInfo surf_info;
-    surf_info.front_side  = proto::dot(face_normal, ray.dir) < 0;
-    surf_info.point       = ray.point_at(ray.tmax);
-    surf_info.uv          = texcoords;
-    surf_info.face_normal = proto::normalize(face_normal);
-    surf_info.local       = proto::ortho_basis(proto::normalize(normal));
+    surf_info.is_front_side = proto::dot(face_normal, ray.dir) < 0;
+    surf_info.point         = ray.point_at(ray.tmax);
+    surf_info.tex_coords    = tex_coords;
+    surf_info.surf_coords   = proto::Vec2f(u, v);
+    surf_info.face_normal   = proto::normalize(face_normal);
+    surf_info.local         = proto::ortho_basis(proto::normalize(normal));
 
-    std::optional<EmissionValue> emission;
+    const Light* light = nullptr;
     if (auto it = lights_.find(triangle_index); it != lights_.end())
-        emission = std::make_optional(it->second->emission(-ray.dir, proto::Vec2f(u, v)));
-    return std::make_optional(Hit { surf_info, emission, bsdfs_[triangle_index] });
+        light = it->second;
+    return std::make_optional(Hit { surf_info, light, bsdfs_[triangle_index] });
 }
 
-bool TriangleMesh::is_occluded(const proto::Rayf& init_ray) const {
+bool TriangleMesh::intersect_any(const proto::Rayf& init_ray) const {
     auto ray = init_ray;
     return static_cast<bool>(bvh::SingleRayTraverser<Bvh>::traverse<true>(ray, bvh_,
         [&] (proto::Rayf& ray, const Bvh::Node& leaf) -> std::optional<std::tuple<>> {

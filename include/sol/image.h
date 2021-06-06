@@ -13,6 +13,7 @@ namespace sol {
 
 /// Image represented as a list of floating-point channels, each having the same width and height.
 /// An image can have an arbitrary number of channels, but some image formats only support 3 or 4 channels.
+/// By convention, the top-left corner of the image is at (0, 0).
 struct Image {
     template <size_t Bits> using Word = std::make_unsigned_t<proto::SizedIntegerType<Bits>>;
 
@@ -43,9 +44,17 @@ public:
     size_t channel_count() const { return channels_.size(); }
 
     RgbColor rgb_at(size_t x, size_t y) const {
-        assert(channel_count() >= 3);
+        assert(channel_count() == 3);
         auto i = y * width_ + x;
         return RgbColor(channels_[0][i], channels_[1][i], channels_[2][i]);
+    }
+
+    void accumulate(size_t x, size_t y, const RgbColor& color) {
+        assert(channel_count() == 3);
+        auto i = y * width_ + x;
+        channels_[0][i] += color.r;
+        channels_[1][i] += color.g;
+        channels_[2][i] += color.b;
     }
 
     Channel& channel(size_t i) { return channels_[i]; }

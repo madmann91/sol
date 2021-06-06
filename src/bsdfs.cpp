@@ -9,7 +9,7 @@
 namespace sol {
 
 Color DiffuseBsdf::eval(const proto::Vec3f&, const SurfaceInfo& surf_info, const proto::Vec3f&) const {
-    return kd_(surf_info.uv) * std::numbers::inv_pi_v<float>;
+    return kd_(surf_info.tex_coords) * std::numbers::inv_pi_v<float>;
 }
 
 BsdfSample DiffuseBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir, bool) const {

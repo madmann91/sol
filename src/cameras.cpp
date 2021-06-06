@@ -20,7 +20,7 @@ PerspectiveCamera::PerspectiveCamera(
     up_ *= h_;
 }
 
-proto::Rayf PerspectiveCamera::gen_ray(const proto::Vec2f& uv) const {
+proto::Rayf PerspectiveCamera::generate_ray(const proto::Vec2f& uv) const {
     return proto::Rayf(eye_, proto::normalize(dir_ + uv[0] * right_ + uv[1] * up_));
 }
 

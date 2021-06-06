@@ -22,9 +22,10 @@ struct BsdfSample {
 /// Surface information for a specific point on a surface.
 /// This information is required to perform various shading operations.
 struct SurfaceInfo {
-    bool front_side;            ///< True if the point is on the front of the surface
+    bool is_front_side;         ///< True if the point is on the front of the surface
     proto::Vec3f point;         ///< Hit point in world coordinates
-    proto::Vec2f uv;            ///< Texture coordinates
+    proto::Vec2f tex_coords;    ///< Texture coordinates
+    proto::Vec2f surf_coords;   ///< Coordinates on the surface (depends on the surface type)
     proto::Vec3f face_normal;   ///< Geometric normal
     proto::Mat3x3f local;       ///< Local coordinates at the hit point, w.r.t shading normal
 
@@ -78,8 +79,8 @@ public:
 protected:
     /// Utility function to create a `BsdfSample`.
     /// It prevents corner cases that will cause issues (zero pdf, direction parallel/under the surface).
-    /// When `BelowSurface` is true, it expects the direction to be under the surface, otherwise above.
-    template <bool BelowSurface = false>
+    /// When `ExpectBelowSurface` is true, it expects the direction to be under the surface, otherwise above.
+    template <bool ExpectBelowSurface = false>
     static BsdfSample make_sample(
         const proto::Vec3f& in_dir,
         float pdf, float cos,
@@ -87,7 +88,7 @@ protected:
         const SurfaceInfo& surf_info)
     {
         auto below_surface = proto::dot(in_dir, surf_info.face_normal) < 0;
-        return pdf > 0 && (below_surface == BelowSurface)
+        return pdf > 0 && (below_surface == ExpectBelowSurface)
             ? BsdfSample { in_dir, pdf, cos, color }
             : BsdfSample { in_dir, 1.0f, 1.0f, Color::black() };
     }

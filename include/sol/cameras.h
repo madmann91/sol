@@ -22,7 +22,7 @@ public:
 	virtual ~Camera() {}
 
 	/// Generates a ray for a point on the image plane, represented by uv-coordinates.
-	virtual proto::Rayf gen_ray(const proto::Vec2f& uv) const = 0;
+	virtual proto::Rayf generate_ray(const proto::Vec2f& uv) const = 0;
 	/// Projects a point onto the image plane and returns the corresponding uv-coordinates.
 	virtual proto::Vec2f project(const proto::Vec3f& point) const = 0;
 	/// Returns a point onto the image plane from uv-coordinates.
@@ -41,7 +41,7 @@ public:
 		float horz_fov,
 		float ratio);
 
-	proto::Rayf gen_ray(const proto::Vec2f&) const override;
+	proto::Rayf generate_ray(const proto::Vec2f&) const override;
 	proto::Vec2f project(const proto::Vec3f&) const override;
 	proto::Vec3f unproject(const proto::Vec2f&) const override;
 	LensGeometry geometry(const proto::Vec2f&) const override;

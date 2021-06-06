@@ -3,6 +3,7 @@ add_library(sol
     formats/jpeg.cpp
     formats/tiff.cpp
     formats/exr.cpp
+    algorithms/path_tracer.cpp
     triangle_mesh.cpp
     image.cpp
     cameras.cpp

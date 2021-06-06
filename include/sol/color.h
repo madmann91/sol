@@ -43,9 +43,11 @@ struct RgbColor {
     friend RgbColor operator / (float other, const RgbColor& color) { return RgbColor(other / color.r, other / color.g, other / color.b); }
 
     float luminance() const { return r * 0.2126f + g * 0.7152f + b * 0.0722f; }
+    bool is_black() const { return r == 0.0f && g == 0.0f && b == 0.0f; }
+    bool is_constant() const { return r == g && r == b; }
 
-    static constexpr RgbColor black() { return RgbColor(0); }
-    static constexpr RgbColor white() { return RgbColor(1); }
+    static constexpr RgbColor black() { return constant(0); }
+    static constexpr RgbColor constant(float c) { return RgbColor(c); }
 };
 
 inline RgbColor lerp(const RgbColor& a, const RgbColor& b, float t) {

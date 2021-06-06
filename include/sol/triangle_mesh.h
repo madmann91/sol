@@ -19,12 +19,12 @@ public:
         std::vector<size_t>&& indices,
         std::vector<proto::Vec3f>&& vertices,
         std::vector<proto::Vec3f>&& normals,
-        std::vector<proto::Vec2f>&& texcoords,
+        std::vector<proto::Vec2f>&& tex_coords,
         std::vector<const Bsdf*>&& bsdfs,
         std::unordered_map<size_t, const TriangleLight*> lights);
 
-    std::optional<Hit> intersect(proto::Rayf&) const override;
-    bool is_occluded(const proto::Rayf&) const override;
+    std::optional<Hit> intersect_closest(proto::Rayf&) const override;
+    bool intersect_any(const proto::Rayf&) const override;
 
     /// Returns the number of triangles in the mesh.
     size_t triangle_count() const { return indices_.size() / 3; }
@@ -44,9 +44,9 @@ public:
         };
     }
 
-    const std::vector<proto::Vec3f>& vertices()  const { return vertices_;  }
-    const std::vector<proto::Vec3f>& normals()   const { return normals_; }
-    const std::vector<proto::Vec2f>& texcoords() const { return texcoords_; }
+    const std::vector<proto::Vec3f>& vertices()   const { return vertices_;  }
+    const std::vector<proto::Vec3f>& normals()    const { return normals_; }
+    const std::vector<proto::Vec2f>& tex_coords() const { return tex_coords_; }
 
     const std::vector<const Bsdf*>& bsdfs() const { return bsdfs_; }
 
@@ -57,7 +57,7 @@ private:
     std::vector<size_t> indices_;
     std::vector<proto::Vec3f> vertices_;
     std::vector<proto::Vec3f> normals_;
-    std::vector<proto::Vec2f> texcoords_;
+    std::vector<proto::Vec2f> tex_coords_;
     std::vector<const Bsdf*> bsdfs_;
     std::unordered_map<size_t, const TriangleLight*> lights_;
     Bvh bvh_;
