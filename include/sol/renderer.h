@@ -45,7 +45,6 @@ public:
         size_t tile_w = default_tile_size,
         size_t tile_h = default_tile_size)
     {
-        // TODO: Define a custom 2D range for this to work properly
         auto range_y = std::views::iota(size_t{0}, proto::round_up(h, tile_h) / tile_h);
         auto range_x = std::views::iota(size_t{0}, proto::round_up(w, tile_w) / tile_w);
         std::for_each(

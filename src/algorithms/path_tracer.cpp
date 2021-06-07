@@ -42,9 +42,11 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
 
         // Direct hits on a light source
         if (hit->light && hit->surf_info.is_front_side) {
+            // Convert the bounce pdf from solid angle to area measure
+            auto pdf_prev_bounce_area =
+                pdf_prev_bounce * proto::dot(out_dir, hit->surf_info.normal()) / (ray.tmax * ray.tmax);
+
             auto emission = hit->light->emission(out_dir, hit->surf_info.surf_coords);
-            // Convert the bounce pdf from solid angle to area
-            auto pdf_prev_bounce_area = pdf_prev_bounce * proto::dot(out_dir, hit->surf_info.normal()) / (ray.tmax * ray.tmax);
             auto mis_weight = Renderer::balance_heuristic(pdf_prev_bounce_area, emission.pdf_area * light_pick_prob);
             color += throughput * emission.intensity * mis_weight;
         }
@@ -62,10 +64,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
             auto cos_surf = proto::dot(in_dir, hit->surf_info.point);
             auto shadow_ray = proto::Rayf::between_points(hit->surf_info.point, light_sample.pos, config_.ray_offset);
 
-            if (cos_surf > 0 &&
-                !light_sample.intensity.is_black() &&
-                !scene_.intersect_any(shadow_ray))
-            {
+            if (cos_surf > 0 && !light_sample.intensity.is_black() && !scene_.intersect_any(shadow_ray)) {
                 // Normalize the incoming direction
                 auto light_dist = proto::length(in_dir);
                 auto light_dist_squared = light_dist * light_dist;
