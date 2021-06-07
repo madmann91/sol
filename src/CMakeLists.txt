@@ -37,7 +37,10 @@ if (TIFF_FOUND)
     target_link_libraries(sol PRIVATE TIFF::TIFF)
 endif ()
 
-set_target_properties(sol PROPERTIES CXX_STANDARD 20)
+set_target_properties(sol PROPERTIES
+    CXX_STANDARD 20
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 export(TARGETS sol proto bvh tinyexr pcg NAMESPACE sol:: FILE ${PROJECT_BINARY_DIR}/sol-targets.cmake)
 configure_file(../cmake/sol-config.cmake.in ${PROJECT_BINARY_DIR}/sol-config.cmake @ONLY)
