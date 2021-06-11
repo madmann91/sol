@@ -25,7 +25,7 @@ class PathTracer final : public Renderer {
 public:
     using Config = detail::PathTracerConfig;
 
-    PathTracer(const Scene& scene, const Config& config = Config {})
+    PathTracer(const Scene& scene, const Config& config = {})
         : Renderer("PathTracer", scene), config_(config)
     {}
 
