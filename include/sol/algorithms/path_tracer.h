@@ -24,8 +24,9 @@ namespace detail {
 class PathTracer final : public Renderer {
 public:
     using Config = detail::PathTracerConfig;
-    PathTracer(const Scene& scene, Config&& config = Config())
-        : Renderer("PathTracer", scene), config_(std::move(config))
+
+    PathTracer(const Scene& scene, const Config& config = Config {})
+        : Renderer("PathTracer", scene), config_(config)
     {}
 
     void render(Image&, size_t) const override;
