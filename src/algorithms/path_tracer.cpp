@@ -1,6 +1,8 @@
 #include "sol/algorithms/path_tracer.h"
 #include "sol/image.h"
 #include "sol/cameras.h"
+#include "sol/bsdfs.h"
+#include "sol/lights.h"
 
 namespace sol {
 

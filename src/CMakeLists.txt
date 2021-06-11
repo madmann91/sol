@@ -8,7 +8,8 @@ add_library(sol
     image.cpp
     cameras.cpp
     lights.cpp
-    bsdfs.cpp)
+    bsdfs.cpp
+    scene.cpp)
 
 target_link_libraries(sol PUBLIC bvh pcg)
 target_include_directories(sol PUBLIC ${PROJECT_SOURCE_DIR}/include)

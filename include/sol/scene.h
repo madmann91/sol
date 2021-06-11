@@ -5,16 +5,29 @@
 #include <vector>
 #include <optional>
 
+#include <proto/mat.h>
+#include <proto/vec.h>
 #include <proto/ray.h>
-
-#include "sol/bsdfs.h"
-#include "sol/lights.h"
 
 namespace sol {
 
+class Bsdf;
+class Light;
 class Texture;
 class Camera;
-struct Material;
+
+/// Surface information for a specific point on a surface.
+/// This information is required to perform various shading operations.
+struct SurfaceInfo {
+    bool is_front_side;         ///< True if the point is on the front of the surface
+    proto::Vec3f point;         ///< Hit point in world coordinates
+    proto::Vec2f tex_coords;    ///< Texture coordinates
+    proto::Vec2f surf_coords;   ///< Coordinates on the surface (depends on the surface type)
+    proto::Vec3f face_normal;   ///< Geometric normal
+    proto::Mat3x3f local;       ///< Local coordinates at the hit point, w.r.t shading normal
+
+    proto::Vec3f normal() const { return local.col(2); }
+};
 
 /// Result of intersecting a ray with a scene node.
 struct Hit {
@@ -23,9 +36,8 @@ struct Hit {
     const Bsdf* bsdf;       ///< BSDF at the hit point, if any (can be null)
 };
 
+/// Owning collection of lights, BSDFs, textures and nodes that make up a scene.
 struct Scene {
-    template <typename T> using unique_vector = std::vector<std::unique_ptr<T>>;
-
     class Node {
     public:
         virtual ~Node() {}
@@ -38,16 +50,20 @@ struct Scene {
         virtual bool intersect_any(const proto::Rayf&) const = 0;
     };
 
+    Scene();
+    ~Scene();
+
     std::optional<Hit> intersect_closest(proto::Rayf& ray) const { return root_node->intersect_closest(ray); }
     bool intersect_any(const proto::Rayf& ray) const { return root_node->intersect_any(ray); }
 
     std::unique_ptr<Node>   root_node;
     std::unique_ptr<Camera> camera;
 
+    template <typename T> using unique_vector = std::vector<std::unique_ptr<T>>;
+
     unique_vector<Bsdf>     bsdfs;
     unique_vector<Light>    lights;
     unique_vector<Texture>  textures;
-    unique_vector<Material> materials;
 };
 
 } // namespace sol

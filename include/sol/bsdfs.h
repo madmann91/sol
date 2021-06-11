@@ -5,6 +5,7 @@
 #include <proto/mat.h>
 
 #include "sol/color.h"
+#include "sol/scene.h"
 
 namespace sol {
 
@@ -17,19 +18,6 @@ struct BsdfSample {
     float pdf;                  ///< Probability density function, evaluated for the direction
     float cos;                  ///< Cosine term of the rendering equation
     Color color;                ///< Color of the sample (BSDF value)
-};
-
-/// Surface information for a specific point on a surface.
-/// This information is required to perform various shading operations.
-struct SurfaceInfo {
-    bool is_front_side;         ///< True if the point is on the front of the surface
-    proto::Vec3f point;         ///< Hit point in world coordinates
-    proto::Vec2f tex_coords;    ///< Texture coordinates
-    proto::Vec2f surf_coords;   ///< Coordinates on the surface (depends on the surface type)
-    proto::Vec3f face_normal;   ///< Geometric normal
-    proto::Mat3x3f local;       ///< Local coordinates at the hit point, w.r.t shading normal
-
-    proto::Vec3f normal() const { return local.col(2); }
 };
 
 /// BSDF represented as a black box that can be sampled and evaluated.
