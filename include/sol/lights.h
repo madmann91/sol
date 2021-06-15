@@ -9,7 +9,7 @@
 namespace sol {
 
 class Sampler;
-class Texture;
+class ColorTexture;
 
 /// Result from sampling the area of a light source.
 struct LightSample {
@@ -79,7 +79,7 @@ private:
 /// A light in the shape of a triangle.
 class TriangleLight final : public Light {
 public:
-    TriangleLight(const proto::Trianglef& triangle, const Texture& intensity)
+    TriangleLight(const proto::Trianglef& triangle, const ColorTexture& intensity)
         : triangle_(triangle), intensity_(intensity)
     {
         normal_ = proto::normalize(triangle_.normal());
@@ -96,7 +96,7 @@ private:
     std::pair<proto::Vec2f, proto::Vec3f> sample(Sampler&) const;
 
     proto::Trianglef triangle_;
-    const Texture& intensity_;
+    const ColorTexture& intensity_;
     proto::Vec3f normal_;
     float inv_area_;
 };

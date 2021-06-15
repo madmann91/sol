@@ -12,21 +12,31 @@
 
 namespace sol {
 
-/// Abstract texture that produces a color from a UV coordinate.
+/// Abstract texture that produces a floating-point value from a UV coordinate.
 class Texture {
 public:
     virtual ~Texture() {}
-    virtual Color operator () (const proto::Vec2f& uv) const = 0;
+    virtual float sample(const proto::Vec2f& uv) const = 0;
+};
+
+/// Abstract texture that produces a color from a UV coordinate.
+class ColorTexture : public Texture {
+public:
+    float sample(const proto::Vec2f& uv) const override {
+        return sample_color(uv).luminance();
+    }
+
+    virtual Color sample_color(const proto::Vec2f& uv) const = 0;
 };
 
 /// Constant texture that evaluates to the same color everywhere.
-class ConstantTexture final : public Texture {
+class ConstantTexture final : public ColorTexture {
 public:
     ConstantTexture(const Color& color)
         : color_(color)
     {}
 
-    Color operator () (const proto::Vec2f&) const override { return color_; }
+    Color sample_color(const proto::Vec2f&) const override { return color_; }
 
 private:
     Color color_;
@@ -92,7 +102,7 @@ struct ImageFilter {
 
 /// Texture made of an image, using the given filter and border handling mode.
 template <typename ImageFilter, typename BorderMode>
-class ImageTexture final : public Texture {
+class ImageTexture final : public ColorTexture {
 public:
     ImageTexture(
         const Image& image,
@@ -103,7 +113,7 @@ public:
         , border_mode_(std::move(border_mode))
     {}
 
-    Color operator () (const proto::Vec2f& uv) const override {
+    Color sample_color(const proto::Vec2f& uv) const override {
         auto fixed_uv = border_mode_(uv);
         return filter_(fixed_uv, image_.width(), image_.height(),
             [&] (size_t i, size_t j) { return image_.rgb_at(i, j); });

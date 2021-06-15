@@ -11,6 +11,7 @@ namespace sol {
 
 class Sampler;
 class Texture;
+class ColorTexture;
 
 /// Sample returned by a BSDF, including direction, pdf, and color.
 struct BsdfSample {
@@ -87,7 +88,7 @@ protected:
 /// Purely diffuse (Lambertian) BSDF.
 class DiffuseBsdf final : public Bsdf {
 public:
-    DiffuseBsdf(const Texture& kd)
+    DiffuseBsdf(const ColorTexture& kd)
         : Bsdf(Bsdf::Type::Diffuse), kd_(kd)
     {}
 
@@ -96,7 +97,27 @@ public:
     float pdf(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
 
 private:
-    const Texture& kd_;
+    const ColorTexture& kd_;
+};
+
+/// Specular part of the modified (physically correct) Phong.
+class PhongBsdf final : public Bsdf {
+public:
+    PhongBsdf(const ColorTexture& ks, const Texture& ns)
+        : Bsdf(Type::Glossy), ks_(ks), ns_(ns)
+    {}
+
+    Color eval(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
+    BsdfSample sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
+    float pdf(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
+
+private:
+    static Color eval(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&, const Color&, float);
+    static float reflect_cosine(const proto::Vec3f&, const proto::Vec3f&, const proto::Vec3f&);
+    static float norm_factor(float);
+
+    const ColorTexture& ks_;
+	const Texture& ns_;
 };
 
 } // namespace sol
