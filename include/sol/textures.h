@@ -19,10 +19,12 @@ public:
     virtual float sample(const proto::Vec2f& uv) const = 0;
 };
 
-/// Abstract texture that produces a color from a UV coordinate.
+/// Abstract texture that produces a color from a UV coordinate. Can be used as a
+/// regular (i.e. scalar) texture that returns the luminance of the color of each
+/// sample.
 class ColorTexture : public Texture {
 public:
-    float sample(const proto::Vec2f& uv) const override {
+    float sample(const proto::Vec2f& uv) const override final {
         return sample_color(uv).luminance();
     }
 
