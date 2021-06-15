@@ -52,21 +52,21 @@ endif ()
 include(CMakePackageConfigHelpers)
 
 # Allow using this library by locating the config file from the build directory
-export(TARGETS sol tinyexr pcg NAMESPACE sol:: FILE sol-targets.cmake)
+export(TARGETS sol tinyexr pcg NAMESPACE sol:: FILE ../sol-targets.cmake)
 configure_package_config_file(
     ../cmake/sol-config.cmake.in
-    sol-config.cmake
+    ../sol-config.cmake
     INSTALL_DESTINATION .
     INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/sol-config-version.cmake COMPATIBILITY SameMajorVersion)
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/../sol-config-version.cmake COMPATIBILITY SameMajorVersion)
 
 # Allow using this library by installing it
 configure_package_config_file(
     ../cmake/sol-config.cmake.in
-    sol-config-install.cmake
+    ../sol-config-install.cmake
     INSTALL_DESTINATION lib/cmake)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sol-config-install.cmake RENAME sol-config.cmake DESTINATION lib/cmake)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sol-config-version.cmake DESTINATION lib/cmake)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/../sol-config-install.cmake RENAME sol-config.cmake DESTINATION lib/cmake)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/../sol-config-version.cmake DESTINATION lib/cmake)
 install(DIRECTORY ../include DESTINATION .)
 install(TARGETS sol tinyexr pcg EXPORT sol-targets)
 install(EXPORT sol-targets NAMESPACE sol:: DESTINATION lib/cmake)
