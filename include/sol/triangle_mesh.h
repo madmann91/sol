@@ -2,9 +2,9 @@
 #define SOL_TRIANGLE_MESH_H
 
 #include <tuple>
+#include <memory>
 
 #include <proto/triangle.h>
-#include <bvh/bvh.h>
 
 #include "sol/scene.h"
 
@@ -22,6 +22,7 @@ public:
         std::vector<proto::Vec2f>&& tex_coords,
         std::vector<const Bsdf*>&& bsdfs,
         std::unordered_map<size_t, const TriangleLight*> lights);
+    ~TriangleMesh();
 
     std::optional<Hit> intersect_closest(proto::Rayf&) const override;
     bool intersect_any(const proto::Rayf&) const override;
@@ -51,8 +52,8 @@ public:
     const std::vector<const Bsdf*>& bsdfs() const { return bsdfs_; }
 
 private:
-    using Bvh = bvh::Bvh<float>;
-    Bvh build_bvh() const;
+    struct BvhData;
+    std::unique_ptr<BvhData> build_bvh() const;
 
     std::vector<size_t> indices_;
     std::vector<proto::Vec3f> vertices_;
@@ -60,7 +61,7 @@ private:
     std::vector<proto::Vec2f> tex_coords_;
     std::vector<const Bsdf*> bsdfs_;
     std::unordered_map<size_t, const TriangleLight*> lights_;
-    Bvh bvh_;
+    std::unique_ptr<BvhData> bvh_data_;
 };
 
 } // namespace sol

@@ -1,9 +1,0 @@
-[submodule "contrib/bvh"]
-	path = contrib/bvh
-	url = git@github.com:madmann91/bvh.git
-[submodule "contrib/pcg-cpp"]
-	path = contrib/pcg-cpp
-	url = git@github.com:imneme/pcg-cpp.git
-[submodule "contrib/tinyexr"]
-	path = contrib/tinyexr
-	url = git@github.com:syoyo/tinyexr.git

@@ -4,6 +4,7 @@
 
 #include <proto/triangle.h>
 
+#include <bvh/bvh.h>
 #include <bvh/sweep_sah_builder.h>
 #ifdef BVH_ENABLE_TBB
 #include <bvh/parallel_top_down_scheduler.h>
@@ -17,6 +18,9 @@
 #include "sol/lights.h"
 
 namespace sol {
+
+using Bvh = bvh::Bvh<float>;
+struct TriangleMesh::BvhData { Bvh bvh; };
 
 #ifdef BVH_ENABLE_TBB
 template <typename Builder>
@@ -40,16 +44,16 @@ TriangleMesh::TriangleMesh(
     , bsdfs_(std::move(bsdfs))
     , lights_(std::move(lights))
 {
-    bvh_ = build_bvh();
+    bvh_data_ = build_bvh();
 }
 
 std::optional<Hit> TriangleMesh::intersect_closest(proto::Rayf& ray) const {
     using HitInfo = std::tuple<size_t, proto::Vec3f, float, float>;
-    auto hit_info = bvh::SingleRayTraverser<Bvh>::traverse<false>(ray, bvh_,
+    auto hit_info = bvh::SingleRayTraverser<Bvh>::traverse<false>(ray, bvh_data_->bvh,
         [&] (proto::Rayf& ray, const Bvh::Node& leaf) {
             std::optional<HitInfo> hit_info;
             for (size_t i = 0; i < leaf.prim_count; ++i) {
-                auto triangle_index = bvh_.prim_indices[leaf.first_index + i];
+                auto triangle_index = bvh_data_->bvh.prim_indices[leaf.first_index + i];
                 auto triangle = triangle_at(triangle_index);
                 if (auto uv = triangle.intersect(ray))
                     hit_info = std::make_optional(HitInfo { triangle_index, triangle.normal(), uv->first, uv->second });
@@ -81,17 +85,17 @@ std::optional<Hit> TriangleMesh::intersect_closest(proto::Rayf& ray) const {
 
 bool TriangleMesh::intersect_any(const proto::Rayf& init_ray) const {
     auto ray = init_ray;
-    return static_cast<bool>(bvh::SingleRayTraverser<Bvh>::traverse<true>(ray, bvh_,
+    return static_cast<bool>(bvh::SingleRayTraverser<Bvh>::traverse<true>(ray, bvh_data_->bvh,
         [&] (proto::Rayf& ray, const Bvh::Node& leaf) -> std::optional<std::tuple<>> {
             for (size_t i = 0; i < leaf.prim_count; ++i) {
-                if (triangle_at(bvh_.prim_indices[leaf.first_index + i]).intersect(ray))
+                if (triangle_at(bvh_data_->bvh.prim_indices[leaf.first_index + i]).intersect(ray))
                     return std::make_optional(std::make_tuple());
             }
             return std::nullopt;
         }));
 }
 
-TriangleMesh::Bvh TriangleMesh::build_bvh() const {
+std::unique_ptr<TriangleMesh::BvhData> TriangleMesh::build_bvh() const {
     auto bboxes  = std::make_unique<proto::BBoxf[]>(triangle_count());
     auto centers = std::make_unique<proto::Vec3f[]>(triangle_count());
 
@@ -113,7 +117,7 @@ TriangleMesh::Bvh TriangleMesh::build_bvh() const {
     TopDownScheduler<Builder> scheduler;
     auto bvh = Builder::build(scheduler, global_bbox, bboxes.get(), centers.get(), triangle_count());
     bvh::SequentialReinsertionOptimizer<Bvh>::optimize(bvh);
-    return bvh;
+    return std::make_unique<BvhData>(std::move(bvh));
 }
 
 } // namespace sol
