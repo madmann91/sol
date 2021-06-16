@@ -15,6 +15,7 @@ class Bsdf;
 class Light;
 class Texture;
 class Camera;
+class Image;
 
 /// Surface information for a specific point on a surface.
 /// This information is required to perform various shading operations.
@@ -61,9 +62,13 @@ struct Scene {
 
     template <typename T> using unique_vector = std::vector<std::unique_ptr<T>>;
 
-    unique_vector<Bsdf>     bsdfs;
-    unique_vector<Light>    lights;
-    unique_vector<Texture>  textures;
+    unique_vector<Bsdf>    bsdfs;
+    unique_vector<Light>   lights;
+    unique_vector<Texture> textures;
+    unique_vector<Image>   images;
+
+    /// Loads the given scene file.
+    bool load(const std::string_view& file_name);
 };
 
 } // namespace sol

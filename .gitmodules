@@ -1,0 +1,6 @@
+[submodule "contrib/tomlplusplus"]
+	path = contrib/tomlplusplus
+	url = git@github.com:marzer/tomlplusplus.git
+[submodule "contrib/tinyexr"]
+	path = contrib/tinyexr
+	url = git@github.com:syoyo/tinyexr.git
