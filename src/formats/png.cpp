@@ -4,7 +4,7 @@
 #include <png.h>
 #endif
 
-#include "sol/formats/png.h"
+#include "formats/png.h"
 
 namespace sol::png {
 

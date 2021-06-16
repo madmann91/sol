@@ -2,7 +2,7 @@
 #include <tiffio.h>
 #endif
 
-#include "sol/formats/tiff.h"
+#include "formats/tiff.h"
 
 namespace sol::tiff {
 

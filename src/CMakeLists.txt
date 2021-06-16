@@ -3,6 +3,7 @@ add_library(sol
     formats/jpeg.cpp
     formats/tiff.cpp
     formats/exr.cpp
+    formats/obj.cpp
     algorithms/path_tracer.cpp
     triangle_mesh.cpp
     image.cpp
@@ -22,6 +23,7 @@ find_package(bvh REQUIRED)
 
 target_link_libraries(sol PUBLIC proto::proto)
 target_link_libraries(sol PRIVATE bvh::bvh tomlplusplus tinyexr)
+target_include_directories(sol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(sol PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     $<INSTALL_INTERFACE:include>)

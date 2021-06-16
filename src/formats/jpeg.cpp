@@ -5,7 +5,7 @@
 #include <jpeglib.h>
 #endif
 
-#include "sol/formats/jpeg.h"
+#include "formats/jpeg.h"
 
 namespace sol::jpeg {
 

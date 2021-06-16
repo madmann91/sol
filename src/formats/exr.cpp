@@ -3,7 +3,7 @@
 #define TINYEXR_IMPLEMENTATION
 #include <tinyexr.h>
 
-#include "sol/formats/exr.h"
+#include "formats/exr.h"
 
 namespace sol::exr {
 

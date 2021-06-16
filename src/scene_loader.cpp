@@ -1,41 +1,20 @@
 #include <filesystem>
 #include <system_error>
-#include <unordered_map>
 
-#include <toml++/toml.h>
+#include "scene_loader.h"
+#include "formats/obj.h"
 
-#include "sol/scene.h"
 #include "sol/cameras.h"
 #include "sol/bsdfs.h"
 #include "sol/lights.h"
 
 namespace sol {
 
-class SceneLoader {
-public:
-    SceneLoader(Scene& scene, const Scene::Defaults& defaults, std::ostream* err_out)
-        : scene_(scene), defaults_(defaults), err_out_(err_out)
-    {}
+SceneLoader::SceneLoader(Scene& scene, const Scene::Defaults& defaults, std::ostream* err_out)
+    : scene_(scene), defaults_(defaults), err_out_(err_out)
+{}
 
-    // Loads the given file into the scene.
-    bool load(const std::string_view& file_name);
-
-    // Loads the given file into the scene using the given directory as
-    // a base directory when loading files with relative paths.
-    bool load(const std::string_view& file_name, const std::string_view& base_dir);
-
-private:
-    proto::Vec3f parse_vec3(toml::node_view<const toml::node>, const proto::Vec3f& = proto::Vec3f(0, 0, 0));
-    std::unique_ptr<Camera> parse_camera(const toml::table&);
-
-    Scene& scene_;
-    const Scene::Defaults& defaults_;
-    std::ostream* err_out_;
-    std::unordered_map<std::string, const Bsdf*>    bsdfs_;
-    std::unordered_map<std::string, const Light*>   lights_;
-    std::unordered_map<std::string, const Texture*> textures_;
-    std::unordered_map<std::string, const Image*>   images_;
-};
+SceneLoader::~SceneLoader() = default;
 
 bool SceneLoader::load(const std::string_view& file_name) {
     std::error_code err_code;
@@ -46,9 +25,14 @@ bool SceneLoader::load(const std::string_view& file_name) {
 bool SceneLoader::load(const std::string_view& file_name, const std::string_view& base_dir) {
     try {
         auto table = toml::parse_file(file_name);
-        if (auto camera_table = table["camera"].as_table())
-            scene_.camera = parse_camera(*camera_table);
-        //create_nodes(table["nodes"].as_array());
+        if (auto camera = table["camera"].as_table())
+            scene_.camera = parse_camera(*camera);
+        if (auto nodes = table["nodes"].as_array()) {
+            for (auto& node : *nodes) {
+                if (auto table = node.as_table())
+                    parse_node(*table);
+            }
+        }
     } catch (std::exception& e) {
         if (err_out_) (*err_out_) << e.what();
         return false;
@@ -77,6 +61,19 @@ std::unique_ptr<Camera> SceneLoader::parse_camera(const toml::table& table) {
         return std::make_unique<PerspectiveCamera>(eye, dir, up, fov, ratio);
     }
     throw std::runtime_error("unknown camera type '" + type + "'");
+}
+
+void SceneLoader::parse_node(const toml::table& table) {
+    auto name = table["name"].value_or<std::string>("");
+    auto type = table["type"].value_or<std::string>("");
+    if (type == "import") {
+        auto file = table["file"].value_or<std::string>("");
+        if (file.ends_with(".obj"))
+            nodes_["name"] = obj::load(*this, file);
+        else
+            throw std::runtime_error("unknown file format for '" + file + "'");
+    }
+    throw std::runtime_error("unkown node type '" + type + "'");
 }
 
 bool Scene::load(const std::string_view& file_name, const Defaults& defaults, std::ostream* err_out) {

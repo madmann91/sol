@@ -1,10 +1,11 @@
 #include <cassert>
 
 #include "sol/image.h"
-#include "sol/formats/png.h"
-#include "sol/formats/jpeg.h"
-#include "sol/formats/tiff.h"
-#include "sol/formats/exr.h"
+
+#include "formats/png.h"
+#include "formats/jpeg.h"
+#include "formats/tiff.h"
+#include "formats/exr.h"
 
 namespace sol {
 
