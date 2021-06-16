@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include <optional>
+#include <ostream>
 
 #include <proto/mat.h>
 #include <proto/vec.h>
@@ -37,6 +38,21 @@ struct Hit {
     const Bsdf* bsdf;       ///< BSDF at the hit point, if any (can be null)
 };
 
+// FIXME: Workaround gcc/clang bug (this should be part of Scene).
+// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88165
+// and https://bugs.llvm.org/show_bug.cgi?id=36684
+namespace detail {
+
+struct SceneDefaults {
+    float fov = 60.0f;
+    float aspect_ratio = 1.0f;
+    proto::Vec3f eye_pos    = proto::Vec3f(0, 0, 0);
+    proto::Vec3f dir_vector = proto::Vec3f(0, 0, 1);
+    proto::Vec3f up_vector  = proto::Vec3f(0, 1, 0);
+};
+
+} // namespace detail
+
 /// Owning collection of lights, BSDFs, textures and nodes that make up a scene.
 struct Scene {
     class Node {
@@ -67,8 +83,13 @@ struct Scene {
     unique_vector<Texture> textures;
     unique_vector<Image>   images;
 
-    /// Loads the given scene file.
-    bool load(const std::string_view& file_name);
+    using Defaults = detail::SceneDefaults;
+
+    /// Loads the given scene file, using the given configuration to deduce missing values.
+    bool load(
+        const std::string_view& file_name,
+        const Defaults& defaults = {},
+        std::ostream* err_out = nullptr);
 };
 
 } // namespace sol

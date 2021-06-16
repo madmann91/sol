@@ -39,7 +39,7 @@ public:
 		const proto::Vec3f& dir,
 		const proto::Vec3f& up,
 		float horz_fov,
-		float ratio);
+		float aspect_ratio);
 
 	proto::Rayf generate_ray(const proto::Vec2f&) const override;
 	proto::Vec2f project(const proto::Vec3f&) const override;

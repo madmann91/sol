@@ -7,7 +7,7 @@ PerspectiveCamera::PerspectiveCamera(
     const proto::Vec3f& dir,
     const proto::Vec3f& up,
     float horz_fov,
-    float ratio)
+    float aspect_ratio)
     : eye_(eye)
 {
     dir_ = proto::normalize(dir);
@@ -15,7 +15,7 @@ PerspectiveCamera::PerspectiveCamera(
     up_ = proto::cross(right_, dir_);
 
     w_ = std::tan(horz_fov * std::numbers::pi_v<float> / 360.0f);
-    h_ = w_ / ratio;
+    h_ = w_ / aspect_ratio;
     right_ *= w_;
     up_ *= h_;
 }
