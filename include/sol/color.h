@@ -42,6 +42,15 @@ struct RgbColor {
     friend RgbColor operator * (float other, const RgbColor& color) { return color * other; }
     friend RgbColor operator / (float other, const RgbColor& color) { return RgbColor(other / color.r, other / color.g, other / color.b); }
 
+    bool operator == (const RgbColor& other) const {
+        return r == other.r && g == other.g && b == other.b;
+    }
+
+    template <typename Hasher>
+    Hasher& hash(Hasher& hasher) const {
+        return hasher.combine(r).combine(g).combine(b);
+    }
+
     float luminance() const { return r * 0.2126f + g * 0.7152f + b * 0.0722f; }
     bool is_black() const { return r == 0.0f && g == 0.0f && b == 0.0f; }
     bool is_constant() const { return r == g && r == b; }

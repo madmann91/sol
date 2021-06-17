@@ -57,7 +57,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
             break;
 
         // Evaluate direct lighting
-        bool is_specular = hit->bsdf->type() == Bsdf::Type::Specular;
+        bool is_specular = hit->bsdf->type == Bsdf::Type::Specular;
         if (!is_specular) {
             auto light = pick_light(sampler, scene_);
             auto light_sample = light->sample_area(sampler, hit->surf_info.point);

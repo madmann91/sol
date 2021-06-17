@@ -6,6 +6,12 @@
 
 namespace sol {
 
+// Point Light ---------------------------------------------------------------------
+
+PointLight::PointLight(const proto::Vec3f& pos, const Color& intensity)
+    : Light(Tag::PointLight), pos_(pos), intensity_(intensity)
+{}
+
 LightSample PointLight::sample_area(Sampler&, const proto::Vec3f& from) const {
     return make_sample(pos_, from - pos_, intensity_, 1.0f, proto::uniform_sphere_pdf<float>(), 1.0f);
 }
@@ -17,6 +23,26 @@ LightSample PointLight::sample_emission(Sampler& sampler) const {
 
 EmissionValue PointLight::emission(const proto::Vec3f&, const proto::Vec2f&) const {
     return EmissionValue { Color::black(), 1.0f, 1.0f };
+}
+
+proto::fnv::Hasher& PointLight::hash(proto::fnv::Hasher& hasher) const {
+    return pos_.hash(intensity_.hash(hasher.combine(tag)));
+}
+
+bool PointLight::equals(const Light& other) const {
+    return
+        other.tag == tag &&
+        static_cast<const PointLight&>(other).pos_ == pos_ &&
+        static_cast<const PointLight&>(other).intensity_ == intensity_;
+}
+
+// Triangle Light ---------------------------------------------------------------------
+
+TriangleLight::TriangleLight(const proto::Trianglef& triangle, const ColorTexture& intensity)
+    : Light(Tag::TriangleLight), triangle_(triangle), intensity_(intensity)
+{
+    normal_ = proto::normalize(triangle_.normal());
+    inv_area_ = 1.0f / triangle_.area();
 }
 
 LightSample TriangleLight::sample_area(Sampler& sampler, const proto::Vec3f& from) const {
@@ -38,6 +64,17 @@ EmissionValue TriangleLight::emission(const proto::Vec3f& dir, const proto::Vec2
     return cos > 0
         ? EmissionValue { intensity_.sample_color(uv), inv_area_, cos }
         : EmissionValue { Color::black(), 1.0f, 1.0f };
+}
+
+proto::fnv::Hasher& TriangleLight::hash(proto::fnv::Hasher& hasher) const {
+    return triangle_.hash(hasher).combine(&intensity_);
+}
+
+bool TriangleLight::equals(const Light& other) const {
+    return
+        other.tag == tag &&
+        static_cast<const TriangleLight&>(other).triangle_ == triangle_ &&
+        &static_cast<const TriangleLight&>(other).intensity_ == &intensity_;
 }
 
 std::pair<proto::Vec2f, proto::Vec3f> TriangleLight::sample(Sampler& sampler) const {

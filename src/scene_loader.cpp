@@ -7,6 +7,7 @@
 #include "sol/cameras.h"
 #include "sol/bsdfs.h"
 #include "sol/lights.h"
+#include "sol/image.h"
 
 namespace sol {
 
@@ -40,6 +41,23 @@ bool SceneLoader::load(const std::string_view& file_name, const std::string_view
     return true;
 }
 
+const Image* SceneLoader::load_image(const std::string& file_name) {
+    std::error_code err_code;
+    auto full_name = std::filesystem::absolute(file_name, err_code).string();
+    if (auto it = images_.find(full_name); it != images_.end())
+        return it->second;
+    if (auto image = Image::load(full_name)) {
+        auto image_ptr = scene_.images.emplace_back(new Image(std::move(*image))).get();
+        images_.emplace(full_name, image_ptr);
+        return image_ptr;
+    }
+    return nullptr;
+}
+
+static inline SourceError error_at(const toml::node& node, const std::string_view& message) {
+    return SourceError(message, { node.source().begin.line, node.source().begin.column }, *node.source().path);
+}
+
 proto::Vec3f SceneLoader::parse_vec3(toml::node_view<const toml::node> node, const proto::Vec3f& default_val) {
     if (auto array = node.as_array(); array && array->size() == 3) {
         return proto::Vec3f(
@@ -60,7 +78,7 @@ std::unique_ptr<Camera> SceneLoader::parse_camera(const toml::table& table) {
         auto ratio = table["aspect"].value_or(defaults_.aspect_ratio);
         return std::make_unique<PerspectiveCamera>(eye, dir, up, fov, ratio);
     }
-    throw std::runtime_error("unknown camera type '" + type + "'");
+    throw error_at(table, "unknown camera type '" + type + "'");
 }
 
 void SceneLoader::parse_node(const toml::table& table) {
@@ -71,9 +89,9 @@ void SceneLoader::parse_node(const toml::table& table) {
         if (file.ends_with(".obj"))
             nodes_["name"] = obj::load(*this, file);
         else
-            throw std::runtime_error("unknown file format for '" + file + "'");
+            throw error_at(table, "unknown file format for '" + file + "'");
     }
-    throw std::runtime_error("unkown node type '" + type + "'");
+    throw error_at(table, "unkown node type '" + type + "'");
 }
 
 bool Scene::load(const std::string_view& file_name, const Defaults& defaults, std::ostream* err_out) {

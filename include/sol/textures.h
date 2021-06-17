@@ -12,47 +12,22 @@
 
 namespace sol {
 
-/// Abstract texture that produces a floating-point value from a UV coordinate.
-class Texture {
-public:
-    virtual ~Texture() {}
-    virtual float sample(const proto::Vec2f& uv) const = 0;
-};
-
-/// Abstract texture that produces a color from a UV coordinate. Can be used as a
-/// regular (i.e. scalar) texture that returns the luminance of the color of each
-/// sample.
-class ColorTexture : public Texture {
-public:
-    float sample(const proto::Vec2f& uv) const override final {
-        return sample_color(uv).luminance();
-    }
-
-    virtual Color sample_color(const proto::Vec2f& uv) const = 0;
-};
-
-/// Constant texture that evaluates to the same color everywhere.
-class ConstantTexture final : public ColorTexture {
-public:
-    ConstantTexture(const Color& color)
-        : color_(color)
-    {}
-
-    Color sample_color(const proto::Vec2f&) const override { return color_; }
-
-private:
-    Color color_;
-};
-
 /// Available border modes for image textures.
 struct BorderMode {
+    enum class Tag { Clamp, Repeat, Mirror, End };
+    static constexpr size_t tag_count() { return static_cast<size_t>(Tag::End); }
+
     struct Clamp {
+        static constexpr Tag tag() { return Tag::Clamp; }
+
         proto::Vec2f operator () (const proto::Vec2f& uv) const {
             return proto::clamp(uv, proto::Vec2f(0), proto::Vec2f(1));
         }
     };
 
     struct Repeat {
+        static constexpr Tag tag() { return Tag::Repeat; }
+
         proto::Vec2f operator () (const proto::Vec2f& uv) const {
             auto u = uv[0] - std::floor(uv[0]);
             auto v = uv[1] - std::floor(uv[1]);
@@ -61,6 +36,8 @@ struct BorderMode {
     };
 
     struct Mirror {
+        static constexpr Tag tag() { return Tag::Mirror; }
+
         proto::Vec2f operator () (const proto::Vec2f& uv) const {
             auto u = std::fmod(uv[0], 2.0f);
             auto v = std::fmod(uv[0], 2.0f);
@@ -73,7 +50,12 @@ struct BorderMode {
 
 /// Available filters for an image texture.
 struct ImageFilter {
+    enum class Tag { Nearest, Bilinear, End };
+    static constexpr size_t tag_count() { return static_cast<size_t>(Tag::End); }
+
     struct Nearest {
+        static constexpr Tag tag() { return Tag::Nearest; }
+
         template <typename F>
         Color operator () (const proto::Vec2f& uv, size_t width, size_t height, F&& f) const {
             size_t x = proto::clamp<int>(uv[0] * width,  0, width  - 1);
@@ -83,6 +65,8 @@ struct ImageFilter {
     };
 
     struct Bilinear {
+        static constexpr Tag tag() { return Tag::Bilinear; }
+
         template <typename F>
         Color operator () (const proto::Vec2f& uv, size_t width, size_t height, F&& f) const {
             auto i = uv[0] * (width - 1);
@@ -102,6 +86,75 @@ struct ImageFilter {
     };
 };
 
+/// Abstract texture that produces a floating-point value from a UV coordinate.
+class Texture {
+public:
+    const enum class Tag {
+        ConstantTexture = 0,
+        ImageTextureBegin = 1,
+        ImageTextureEnd =
+            ImageTextureBegin + BorderMode::tag_count() * ImageFilter::tag_count()
+    } tag;
+
+    Texture(Tag tag)
+        : tag(tag)
+    {}
+
+    virtual ~Texture() {}
+
+    /// Produces a value, given a particular texture coordinate.
+    virtual float sample(const proto::Vec2f& uv) const = 0;
+
+    virtual proto::fnv::Hasher& hash(proto::fnv::Hasher&) const = 0;
+    virtual bool equals(const Texture&) const = 0;
+
+protected:
+    template <typename ImageFilterType, typename BorderModeType>
+    static constexpr Tag make_image_texture_tag() {
+        return static_cast<Tag>(
+            static_cast<size_t>(Tag::ImageTextureBegin) +
+            BorderMode::tag_count() * ImageFilterType::tag() +
+            BorderModeType::tag());
+    }
+};
+
+/// Abstract texture that produces a color from a UV coordinate. Can be used as a
+/// regular (i.e. scalar) texture that returns the luminance of the color of each
+/// sample.
+class ColorTexture : public Texture {
+public:
+    ColorTexture(Tag tag)
+        : Texture(tag)
+    {}
+
+    float sample(const proto::Vec2f& uv) const override final {
+        return sample_color(uv).luminance();
+    }
+
+    virtual Color sample_color(const proto::Vec2f& uv) const = 0;
+};
+
+/// Constant texture that evaluates to the same color everywhere.
+class ConstantTexture final : public ColorTexture {
+public:
+    ConstantTexture(const Color& color)
+        : ColorTexture(Tag::ConstantTexture), color_(color)
+    {}
+
+    Color sample_color(const proto::Vec2f&) const override { return color_; }
+
+    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const {
+        return color_.hash(hasher.combine(tag));
+    }
+
+    bool equals(const Texture& other) const override {
+        return other.tag == tag && static_cast<const ConstantTexture&>(other).color_ == color_;
+    }
+
+private:
+    Color color_;
+};
+
 /// Texture made of an image, using the given filter and border handling mode.
 template <typename ImageFilter, typename BorderMode>
 class ImageTexture final : public ColorTexture {
@@ -110,7 +163,8 @@ public:
         const Image& image,
         ImageFilter&& filter = ImageFilter(),
         BorderMode&& border_mode = BorderMode())
-        : image_(image)
+        : ColorTexture(make_image_texture_tag<ImageFilter, BorderMode>())
+        , image_(image)
         , filter_(std::move(filter))
         , border_mode_(std::move(border_mode))
     {}
@@ -119,6 +173,14 @@ public:
         auto fixed_uv = border_mode_(uv);
         return filter_(fixed_uv, image_.width(), image_.height(),
             [&] (size_t i, size_t j) { return image_.rgb_at(i, j); });
+    }
+
+    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const {
+        return hasher.combine(tag).combine(&image);
+    }
+
+    bool equals(const Texture& other) const override {
+        return other.tag == tag && &static_cast<const ImageTexture&>(other).image() == &image;
     }
 
     const Image& image() const { return image_; }

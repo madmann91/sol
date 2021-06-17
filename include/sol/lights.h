@@ -3,6 +3,7 @@
 
 #include <proto/vec.h>
 #include <proto/triangle.h>
+#include <proto/hash.h>
 
 #include "sol/color.h"
 
@@ -30,6 +31,15 @@ struct EmissionValue {
 
 class Light {
 public:
+    const enum class Tag {
+        PointLight,
+        TriangleLight
+    } tag;
+
+    Light(Tag tag)
+        : tag(tag)
+    {}
+
     virtual ~Light() {}
 
     /// Samples the area of a light source from the given point on another surface.
@@ -40,8 +50,10 @@ public:
     /// The direction should be oriented outwards (from the light _to_ the surface).
     virtual EmissionValue emission(const proto::Vec3f& dir, const proto::Vec2f& uv) const;
 
-    /// Returns true if this light has an area.
     virtual bool has_area() const = 0;
+
+    virtual proto::fnv::Hasher& hash(proto::fnv::Hasher&) const = 0;
+    virtual bool equals(const Light&) const = 0;
 
 protected:
     /// Utility function to create a `LightSample`.
@@ -61,15 +73,16 @@ protected:
 /// A single-point light.
 class PointLight final : public Light {
 public:
-    PointLight(const proto::Vec3f& pos, const Color& intensity)
-        : pos_(pos), intensity_(intensity)
-    {}
+    PointLight(const proto::Vec3f&, const Color&);
 
     LightSample sample_area(Sampler&, const proto::Vec3f&) const override;
     LightSample sample_emission(Sampler&) const override;
     EmissionValue emission(const proto::Vec3f&, const proto::Vec2f&) const override;
 
     bool has_area() const override { return false; }
+
+    proto::fnv::Hasher& hash(proto::fnv::Hasher&) const override;
+    bool equals(const Light&) const override;
 
 private:
     proto::Vec3f pos_;
@@ -79,18 +92,16 @@ private:
 /// A light in the shape of a triangle.
 class TriangleLight final : public Light {
 public:
-    TriangleLight(const proto::Trianglef& triangle, const ColorTexture& intensity)
-        : triangle_(triangle), intensity_(intensity)
-    {
-        normal_ = proto::normalize(triangle_.normal());
-        inv_area_ = 1.0f / triangle_.area();
-    }
+    TriangleLight(const proto::Trianglef&, const ColorTexture&);
 
     LightSample sample_area(Sampler&, const proto::Vec3f&) const override;
     LightSample sample_emission(Sampler&) const override;
     EmissionValue emission(const proto::Vec3f&, const proto::Vec2f&) const override;
 
     bool has_area() const override { return true; }
+
+    proto::fnv::Hasher& hash(proto::fnv::Hasher&) const override;
+    bool equals(const Light&) const override;
 
 private:
     std::pair<proto::Vec2f, proto::Vec3f> sample(Sampler&) const;
