@@ -39,6 +39,10 @@ bool SceneLoader::load(const std::string& file_name) {
                     parse_node(*table, base_dir);
             }
         }
+        auto root_node = table["root_node"].value_or<std::string>("");
+        if (!nodes_.contains(root_node))
+            throw std::runtime_error("Root node named '" + root_node + "' cannot be found");
+        scene_.root_node = std::move(nodes_[root_node]);
     } catch (toml::parse_error& error) {
         // Use the same error message syntax for TOML++ errors and the loaders' error messages
         if (err_out_) (*err_out_) << error_at(error.source(), error.description()).what();
@@ -61,6 +65,11 @@ const Image* SceneLoader::load_image(const std::string& file_name) {
         return image_ptr;
     }
     return nullptr;
+}
+
+void SceneLoader::insert_node(const std::string& name, std::unique_ptr<Scene::Node>&& node) {
+    if (!nodes_.emplace(name, std::move(node)).second)
+        throw std::runtime_error("Duplicate node found with name '" + name + "'");
 }
 
 proto::Vec3f SceneLoader::parse_vec3(toml::node_view<const toml::node> node, const proto::Vec3f& default_val) {
@@ -92,10 +101,8 @@ void SceneLoader::parse_node(const toml::table& table, const std::string& base_d
     if (type == "import") {
         auto file = table["file"].value_or<std::string>("");
         if (file.ends_with(".obj"))
-            nodes_["name"] = obj::load(*this, base_dir + "/" + file);
-        else
-            throw error_at(table.source(), "Unknown file format for '" + file + "'");
-        return;
+            return insert_node(name, obj::load(*this, base_dir + "/" + file));
+        throw error_at(table.source(), "Unknown file format for '" + file + "'");
     }
     throw error_at(table.source(), "Unknown node type '" + type + "'");
 }

@@ -64,6 +64,8 @@ public:
         return get_or_insert<T, Light>(lights_, scene_.lights, std::forward<Args>(args)...); 
     }
 
+    void insert_node(const std::string&, std::unique_ptr<Scene::Node>&&);
+
 private:
     static proto::Vec3f parse_vec3(toml::node_view<const toml::node>, const proto::Vec3f&);
     std::unique_ptr<Camera> parse_camera(const toml::table&);
