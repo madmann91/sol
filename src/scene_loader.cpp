@@ -47,7 +47,7 @@ bool SceneLoader::load(const std::string& file_name) {
         // Use the same error message syntax for TOML++ errors and the loaders' error messages
         if (err_out_) (*err_out_) << error_at(error.source(), error.description()).what();
         return false;
-    } catch (SourceError& e) {
+    } catch (std::exception& e) {
         if (err_out_) (*err_out_) << e.what();
         return false;
     }
