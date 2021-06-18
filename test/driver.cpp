@@ -47,9 +47,9 @@ int main(int argc, char** argv) {
     if (!options)
         return 1; 
 
-    sol::Scene scene;
     std::ostringstream err_stream;
-    if (!scene.load(options->scene_file, {}, &err_stream)) {
+    auto scene = sol::Scene::load(options->scene_file, {}, &err_stream);
+    if (!scene) {
         std::cerr << err_stream.str() << std::endl;
         return 1;
     }
@@ -57,10 +57,10 @@ int main(int argc, char** argv) {
     std::cout
         << "'" << options->scene_file << "' loaded successfully\n"
         << "Summary:\n"
-        << "    " << scene.bsdfs.size() << " BSDF(s)\n"
-        << "    " << scene.lights.size() << " light(s)\n"
-        << "    " << scene.textures.size() << " texture(s)\n"
-        << "    " << scene.images.size() << " image(s)\n";
+        << "    " << scene->bsdfs.size() << " BSDF(s)\n"
+        << "    " << scene->lights.size() << " light(s)\n"
+        << "    " << scene->textures.size() << " texture(s)\n"
+        << "    " << scene->images.size() << " image(s)\n";
 
     return 0;
 }

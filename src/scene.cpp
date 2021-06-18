@@ -8,5 +8,6 @@ namespace sol {
 
 Scene::Scene() = default;
 Scene::~Scene() = default;
+Scene::Scene(Scene&&) = default;
 
 } // namespace sol

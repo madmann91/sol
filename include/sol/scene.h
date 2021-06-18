@@ -39,9 +39,6 @@ struct Hit {
     const Bsdf* bsdf;       ///< BSDF at the hit point, if any (can be null)
 };
 
-// FIXME: Workaround gcc/clang bug (this should be part of Scene).
-// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88165
-// and https://bugs.llvm.org/show_bug.cgi?id=36684
 namespace detail {
 
 struct SceneDefaults {
@@ -69,6 +66,7 @@ struct Scene {
     };
 
     Scene();
+    Scene(Scene&&);
     ~Scene();
 
     std::optional<Hit> intersect_closest(proto::Rayf& ray) const { return root_node->intersect_closest(ray); }
@@ -87,7 +85,7 @@ struct Scene {
     using Defaults = detail::SceneDefaults;
 
     /// Loads the given scene file, using the given configuration to deduce missing values.
-    bool load(
+    static std::optional<Scene> load(
         const std::string& file_name,
         const Defaults& defaults = {},
         std::ostream* err_out = nullptr);

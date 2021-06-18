@@ -8,9 +8,6 @@ namespace sol {
 
 class Sampler;
 
-// FIXME: Workaround gcc/clang bug (this should be part of PathTracer).
-// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88165
-// and https://bugs.llvm.org/show_bug.cgi?id=36684
 namespace detail {
 
 struct PathTracerConfig {

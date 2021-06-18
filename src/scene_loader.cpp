@@ -100,9 +100,10 @@ void SceneLoader::parse_node(const toml::table& table, const std::string& base_d
     throw error_at(table.source(), "Unknown node type '" + type + "'");
 }
 
-bool Scene::load(const std::string& file_name, const Defaults& defaults, std::ostream* err_out) {
-    SceneLoader loader(*this, defaults, err_out);
-    return loader.load(file_name);
+std::optional<Scene> Scene::load(const std::string& file_name, const Defaults& defaults, std::ostream* err_out) {
+    Scene scene;
+    SceneLoader loader(scene, defaults, err_out);
+    return loader.load(file_name) ? std::make_optional(std::move(scene)) : std::nullopt;
 }
 
 } // namespace sol
