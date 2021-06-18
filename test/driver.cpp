@@ -9,15 +9,25 @@
 struct Options {
     std::string scene_file;
     std::string job_file;
-    std::string out_file;
+    std::string out_file = "render.exr";
 };
 
 static void usage() {
+    Options default_options;
     std::cout <<
         "Usage: driver [options] scene.toml job.toml\n"
         "Available options:\n"
-        "  -h         --help  Shows this message\n"
-        "  -o <image>         Sets the output image file name (default: \'render.exr\')\n";
+        "  -h          --help  Shows this message\n"
+        "  -o <image>          Sets the output image file name (default: \'"
+        << default_options.out_file << "\')" << std::endl;
+}
+
+bool must_have_arg(int i, int argc, char** argv) {
+    if (i == argc - 1) {
+        std::cerr << "Missing argument for option '" << argv[i] << "'" << std::endl;
+        return false;
+    }
+    return true;
 }
 
 static std::optional<Options> parse_options(int argc, char** argv) {
@@ -28,6 +38,10 @@ static std::optional<Options> parse_options(int argc, char** argv) {
             if (argv[i] == "-h"sv || argv[i] == "--help"sv) {
                 usage();
                 return std::nullopt;
+            } else if (argv[i] == "-o"sv) {
+                if (!must_have_arg(i, argc, argv))
+                    return std::nullopt;
+                options.out_file = argv[++i];
             } else {
                 std::cerr << "Unknown option '" << argv[i] << "'" << std::endl;
                 return std::nullopt;
@@ -42,7 +56,9 @@ static std::optional<Options> parse_options(int argc, char** argv) {
         }
     }
     if (options.scene_file.empty() || options.job_file.empty()) {
-        std::cerr << "Missing scene and/or render job file" << std::endl;
+        std::cerr <<
+            "Missing scene and/or render job file\n"
+            "Type 'driver -h' to show usage" << std::endl;
         return std::nullopt;
     }
     return std::make_optional(options);
