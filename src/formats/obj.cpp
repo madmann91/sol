@@ -196,7 +196,7 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
                 case 't':  file.tex_coords.push_back(parse_vec2(ptr + 2)); break;
                 default:
                     if (is_strict)
-                        throw SourceError(file_name, { line_count, 1 }, "invalid vertex");
+                        throw SourceError(file_name, { line_count, 1 }, "Invalid vertex");
                     break;
             }
         } else if (*ptr == 'f' && std::isspace(ptr[1])) {
@@ -222,7 +222,7 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
             if (is_valid)
                 file.objects.back().groups.back().faces.push_back(face);
             else if (is_strict)
-                throw SourceError(file_name, { line_count, 1 }, "invalid face");
+                throw SourceError(file_name, { line_count, 1 }, "Invalid face");
         } else if (*ptr == 'g' && std::isspace(ptr[1])) {
             file.objects.back().groups.emplace_back();
         } else if (*ptr == 'o' && std::isspace(ptr[1])) {
@@ -237,8 +237,8 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
             if (auto it = std::find(file.materials.begin(), file.materials.end(), material); it != file.materials.end()) {
                 material_index = it - file.materials.begin();
             } else {
-                file.materials.push_back(material);
                 material_index = file.materials.size();
+                file.materials.push_back(material);
             }
         } else if (!std::strncmp(ptr, "mtllib", 6) && std::isspace(ptr[6])) {
             ptr = strip_spaces(ptr + 6);
@@ -248,7 +248,7 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
         } else if (*ptr == 's' && std::isspace(ptr[1])) {
             // Ignore smooth commands
         } else if (is_strict)
-            throw SourceError(file_name, { line_count, 1 }, "unknown command");
+            throw SourceError(file_name, { line_count, 1 }, "Unknown command");
     }
 
     return file;
@@ -257,7 +257,7 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
 static File parse_obj(const std::string& file_name, bool is_strict) {
     std::ifstream is(file_name);
     if (!is)
-        throw std::runtime_error("cannot open OBJ file '" + file_name + "'");
+        throw std::runtime_error("Cannot open OBJ file '" + file_name + "'");
     return parse_obj(is, file_name, is_strict);
 }
 
@@ -281,7 +281,7 @@ static void parse_mtl(std::istream& stream, const std::string& file_name, Materi
             ptr = strip_text(ptr);
             std::string name(base, ptr);
             if (is_strict && material_lib.contains(name))
-                throw SourceError(file_name, { line_count, 1 }, "redefinition of material '" + name + "'");
+                throw SourceError(file_name, { line_count, 1 }, "Redefinition of material '" + name + "'");
             material = &material_lib[name];
         } else if (ptr[0] == 'K' && std::isspace(ptr[2])) {
             if (ptr[1] == 'a')
@@ -332,7 +332,7 @@ static void parse_mtl(std::istream& stream, const std::string& file_name, Materi
 
 unknown_command:
         if (is_strict)
-            throw SourceError(file_name, { line_count, 1 }, "unknown command '" + std::string(ptr) + "'");
+            throw SourceError(file_name, { line_count, 1 }, "Unknown command '" + std::string(ptr) + "'");
     }
 }
 
@@ -341,7 +341,7 @@ static void parse_mtl(const std::string& file_name, MaterialLib& material_lib, b
     if (!is) {
         // Accept missing material files in non-strict mode
         if (!is_strict) return;
-        throw std::runtime_error("cannot open MTL file '" + file_name + "'");
+        throw std::runtime_error("Cannot open MTL file '" + file_name + "'");
     }
     parse_mtl(is, file_name, material_lib, is_strict);
 }
@@ -358,7 +358,7 @@ static const Texture* get_texture(
         if (auto image = scene_loader.load_image(file_name))
             return scene_loader.get_or_insert_texture<ImageTextureType>(*image);
         else if (is_strict)
-            throw std::runtime_error("cannot load image '" + file_name + "'");
+            throw std::runtime_error("Cannot load image '" + file_name + "'");
     }
     return scene_loader.get_or_insert_texture<ConstantTextureType<T>>(constant);
 }
@@ -415,7 +415,7 @@ static void check_materials(File& file, const MaterialLib& material_lib, bool is
     for (auto& material : file.materials) {
         if (!material_lib.contains(material)) {
             if (is_strict)
-                throw std::runtime_error("cannot find material named '" + material + "'");
+                throw std::runtime_error("Cannot find material named '" + material + "'");
             material = "dummy";
         }
     }

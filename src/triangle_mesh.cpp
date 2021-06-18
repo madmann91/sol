@@ -47,6 +47,8 @@ TriangleMesh::TriangleMesh(
     bvh_data_ = build_bvh();
 }
 
+TriangleMesh::~TriangleMesh() = default;
+
 std::optional<Hit> TriangleMesh::intersect_closest(proto::Rayf& ray) const {
     using HitInfo = std::tuple<size_t, proto::Vec3f, float, float>;
     auto hit_info = bvh::SingleRayTraverser<Bvh>::traverse<false>(ray, bvh_data_->bvh,

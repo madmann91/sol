@@ -43,12 +43,12 @@ public:
     virtual ~Light() {}
 
     /// Samples the area of a light source from the given point on another surface.
-    virtual LightSample sample_area(Sampler&, const proto::Vec3f& from) const;
+    virtual LightSample sample_area(Sampler&, const proto::Vec3f& from) const = 0;
     /// Samples the emissive surface of the light.
-    virtual LightSample sample_emission(Sampler&) const;
+    virtual LightSample sample_emission(Sampler&) const = 0;
     /// Computes the emission value of this light, for a given point on the light, and a given direction.
     /// The direction should be oriented outwards (from the light _to_ the surface).
-    virtual EmissionValue emission(const proto::Vec3f& dir, const proto::Vec2f& uv) const;
+    virtual EmissionValue emission(const proto::Vec3f& dir, const proto::Vec2f& uv) const = 0;
 
     virtual bool has_area() const = 0;
 

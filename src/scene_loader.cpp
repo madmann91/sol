@@ -11,24 +11,39 @@
 
 namespace sol {
 
+static inline SourceError error_at(const toml::source_region& source, const std::string_view& message) {
+    return SourceError(*source.path, { source.begin.line, source.begin.column }, message);
+}
+
 SceneLoader::SceneLoader(Scene& scene, const Scene::Defaults& defaults, std::ostream* err_out)
     : scene_(scene), defaults_(defaults), err_out_(err_out)
 {}
 
 SceneLoader::~SceneLoader() = default;
 
-bool SceneLoader::load(const std::string_view& file_name) {
+bool SceneLoader::load(const std::string& file_name) {
     try {
-        auto table = toml::parse_file(file_name);
+        std::ifstream is(file_name);
+        if (!is)
+            throw std::runtime_error("Cannot open file '" + file_name + "'");
+
+        std::error_code err_code;
+        auto base_dir = std::filesystem::absolute(file_name, err_code).parent_path().string();
+
+        auto table = toml::parse(is, file_name);
         if (auto camera = table["camera"].as_table())
             scene_.camera = parse_camera(*camera);
         if (auto nodes = table["nodes"].as_array()) {
             for (auto& node : *nodes) {
                 if (auto table = node.as_table())
-                    parse_node(*table);
+                    parse_node(*table, base_dir);
             }
         }
-    } catch (std::exception& e) {
+    } catch (toml::parse_error& error) {
+        // Use the same error message syntax for TOML++ errors and the loaders' error messages
+        if (err_out_) (*err_out_) << error_at(error.source(), error.description()).what();
+        return false;
+    } catch (SourceError& e) {
         if (err_out_) (*err_out_) << e.what();
         return false;
     }
@@ -46,10 +61,6 @@ const Image* SceneLoader::load_image(const std::string& file_name) {
         return image_ptr;
     }
     return nullptr;
-}
-
-static inline SourceError error_at(const toml::node& node, const std::string_view& message) {
-    return SourceError(message, { node.source().begin.line, node.source().begin.column }, *node.source().path);
 }
 
 proto::Vec3f SceneLoader::parse_vec3(toml::node_view<const toml::node> node, const proto::Vec3f& default_val) {
@@ -72,23 +83,24 @@ std::unique_ptr<Camera> SceneLoader::parse_camera(const toml::table& table) {
         auto ratio = table["aspect"].value_or(defaults_.aspect_ratio);
         return std::make_unique<PerspectiveCamera>(eye, dir, up, fov, ratio);
     }
-    throw error_at(table, "unknown camera type '" + type + "'");
+    throw error_at(table.source(), "Unknown camera type '" + type + "'");
 }
 
-void SceneLoader::parse_node(const toml::table& table) {
+void SceneLoader::parse_node(const toml::table& table, const std::string& base_dir) {
     auto name = table["name"].value_or<std::string>("");
     auto type = table["type"].value_or<std::string>("");
     if (type == "import") {
         auto file = table["file"].value_or<std::string>("");
         if (file.ends_with(".obj"))
-            nodes_["name"] = obj::load(*this, file);
+            nodes_["name"] = obj::load(*this, base_dir + "/" + file);
         else
-            throw error_at(table, "unknown file format for '" + file + "'");
+            throw error_at(table.source(), "Unknown file format for '" + file + "'");
+        return;
     }
-    throw error_at(table, "unknown node type '" + type + "'");
+    throw error_at(table.source(), "Unknown node type '" + type + "'");
 }
 
-bool Scene::load(const std::string_view& file_name, const Defaults& defaults, std::ostream* err_out) {
+bool Scene::load(const std::string& file_name, const Defaults& defaults, std::ostream* err_out) {
     SceneLoader loader(*this, defaults, err_out);
     return loader.load(file_name);
 }

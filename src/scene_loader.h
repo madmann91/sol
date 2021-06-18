@@ -41,7 +41,7 @@ public:
     ~SceneLoader();
 
     // Loads the given file into the scene.
-    bool load(const std::string_view& file_name);
+    bool load(const std::string& file_name);
 
     // Loads an image or returns an already loaded one.
     const Image* load_image(const std::string& file_name);
@@ -67,7 +67,7 @@ public:
 private:
     static proto::Vec3f parse_vec3(toml::node_view<const toml::node>, const proto::Vec3f&);
     std::unique_ptr<Camera> parse_camera(const toml::table&);
-    void parse_node(const toml::table&);
+    void parse_node(const toml::table&, const std::string&);
     void parse_scene(const toml::table&);
 
     template <typename T, typename U, typename Set, typename Container, typename... Args>

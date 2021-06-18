@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 #include <ostream>
+#include <string>
 
 #include <proto/mat.h>
 #include <proto/vec.h>
@@ -87,7 +88,7 @@ struct Scene {
 
     /// Loads the given scene file, using the given configuration to deduce missing values.
     bool load(
-        const std::string_view& file_name,
+        const std::string& file_name,
         const Defaults& defaults = {},
         std::ostream* err_out = nullptr);
 };
