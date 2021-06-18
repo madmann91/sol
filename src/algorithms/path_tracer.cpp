@@ -12,11 +12,14 @@ void PathTracer::render(Image& image, size_t frame_index) const {
         [&] (size_t xmin, size_t ymin, size_t xmax, size_t ymax) {
             for (size_t y = ymin; y < ymax; ++y) {
                 for (size_t x = xmin; x < xmax; ++x) {
-                    Sampler sampler(Renderer::pixel_seed(frame_index, x, y));
-                    auto ray = scene_.camera->generate_ray(
-                        Renderer::sample_pixel(sampler, x, y, image.width(), image.height()));
-                    auto color = trace_path(sampler, ray); 
-                    image.accumulate(x, y, color);
+                    for (size_t i = 0; i < config_.samples_per_pixel_per_frame; ++i) {
+                        size_t sample_index = frame_index * config_.samples_per_pixel_per_frame + i;
+                        Sampler sampler(Renderer::pixel_seed(sample_index, x, y));
+                        auto ray = scene_.camera->generate_ray(
+                            Renderer::sample_pixel(sampler, x, y, image.width(), image.height()));
+                        auto color = trace_path(sampler, ray);
+                        image.accumulate(x, y, color);
+                    }
                 }
             }
         });

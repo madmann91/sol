@@ -11,6 +11,7 @@ class Sampler;
 namespace detail {
 
 struct PathTracerConfig {
+    size_t samples_per_pixel_per_frame = 1;   ///< Number of samples per pixel, per frame.
     size_t min_russian_roulette_path_len = 3; ///< Minimum path length to enable Russian Roulette
     float  max_survival_prob = 0.75f;         ///< Maximum Russian Roulette survival probability (must be in `[0, 1]`)
     float  min_survival_prob = 0.05f;         ///< Minimum Russian Roulette survival probability (must be in `[0, 1]`)

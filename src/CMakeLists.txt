@@ -11,7 +11,8 @@ add_library(sol
     lights.cpp
     bsdfs.cpp
     scene.cpp
-    scene_loader.cpp)
+    scene_loader.cpp
+    render_job.cpp)
 
 set_target_properties(sol PROPERTIES
     CXX_STANDARD 20
@@ -20,8 +21,9 @@ set_target_properties(sol PROPERTIES
 
 find_package(proto REQUIRED)
 find_package(bvh REQUIRED)
+find_package(Threads REQUIRED)
 
-target_link_libraries(sol PUBLIC proto::proto)
+target_link_libraries(sol PUBLIC proto::proto Threads::Threads)
 target_link_libraries(sol PRIVATE bvh::bvh tomlplusplus tinyexr)
 target_include_directories(sol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(sol PUBLIC
