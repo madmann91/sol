@@ -9,13 +9,15 @@
 struct Options {
     std::string scene_file;
     std::string job_file;
+    std::string out_file;
 };
 
 static void usage() {
     std::cout <<
         "Usage: driver [options] scene.toml job.toml\n"
         "Available options:\n"
-        "  -h   --help    Shows this message" << std::endl;
+        "  -h         --help  Shows this message\n"
+        "  -o <image>         Sets the output image file name (default: \'render.exr\')\n";
 }
 
 static std::optional<Options> parse_options(int argc, char** argv) {
@@ -74,5 +76,10 @@ int main(int argc, char** argv) {
 
     render_job->start();
     render_job->wait();
+
+    if (!options->out_file.empty()) {
+        render_job->output->scale(1.0f / static_cast<float>(render_job->sample_count));
+        render_job->output->save(options->out_file);
+    }
     return 0;
 }

@@ -60,6 +60,9 @@ public:
     Channel& channel(size_t i) { return channels_[i]; }
     const Channel& channel(size_t i) const { return channels_[i]; }
 
+    /// Scales every pixel in the image by the given value.
+    void scale(float value);
+
     /// Saves the image to a file, using the given format.
     /// If format is `Auto`, the function uses the EXR format for the image.
     bool save(const std::string_view& path, Format format = Format::Auto) const;

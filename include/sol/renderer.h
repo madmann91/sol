@@ -32,10 +32,10 @@ public:
 
     const std::string& name() const { return name_; }
 
-    /// Renders the frame with the given index into the given image.
-    /// Since the behavior is entirely deterministic, this `frame_index`
-    /// variable can be used to retrace a particular frame.
-    virtual void render(Image& image, size_t frame_index) const = 0;
+    /// Renders the samples starting at the given index into the given image.
+    /// Since the behavior is entirely deterministic, this `sample_index`
+    /// variable can be used to retrace a particular set of samples.
+    virtual void render(Image& image, size_t sample_index, size_t sample_count = 1) const = 0;
 
     /// Processes each tile of the given range `[0,w]x[0,h]` in parallel.
     /// The size of each tile is given 

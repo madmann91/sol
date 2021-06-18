@@ -11,7 +11,6 @@ class Sampler;
 namespace detail {
 
 struct PathTracerConfig {
-    size_t samples_per_pixel_per_frame = 1;   ///< Number of samples per pixel, per frame.
     size_t min_russian_roulette_path_len = 3; ///< Minimum path length to enable Russian Roulette
     float  max_survival_prob = 0.75f;         ///< Maximum Russian Roulette survival probability (must be in `[0, 1]`)
     float  min_survival_prob = 0.05f;         ///< Minimum Russian Roulette survival probability (must be in `[0, 1]`)
@@ -29,7 +28,7 @@ public:
         : Renderer("PathTracer", scene), config_(config)
     {}
 
-    void render(Image&, size_t) const override;
+    void render(Image&, size_t, size_t) const override;
 
 private:
     Color trace_path(Sampler&, proto::Rayf) const;

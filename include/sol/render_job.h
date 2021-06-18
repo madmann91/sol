@@ -26,7 +26,8 @@ struct Viewport {
 };
 
 struct RenderJob {
-    size_t frame_count = 0;             ///< Number of frames to render (0 = unlimited, until cancellation).
+    size_t sample_count = 0;            ///< Number of samples to render (0 = unlimited, until cancellation).
+    size_t samples_per_frame = 1;       ///< Number of samples per frame (larger = higher throughput but higher latency)
     std::unique_ptr<Scene> scene;       ///< Scene to render.
     std::unique_ptr<Image> output;      ///< Output image, where samples are accumulated.
     std::unique_ptr<Renderer> renderer; ///< Renderer to use.

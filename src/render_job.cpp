@@ -10,17 +10,22 @@ RenderJob::RenderJob() = default;
 RenderJob::~RenderJob() = default;
 
 RenderJob::RenderJob(RenderJob&& other)
-    : frame_count(other.frame_count)
-    , scene(std::move(other.scene)) 
-    , output(std::move(other.output)) 
-    , renderer(std::move(other.renderer)) 
+    : sample_count(other.sample_count)
+    , samples_per_frame(other.samples_per_frame)
+    , scene(std::move(other.scene))
+    , output(std::move(other.output))
+    , renderer(std::move(other.renderer))
 {}
 
 void RenderJob::start(std::function<bool (const RenderJob&)>&& frame_end) {
     must_stop_ = false;
     render_thread_ = std::thread([&] {
-        for (size_t i = 0; frame_count == 0 || i < frame_count; ++i) {
-            renderer->render(*output, i);
+        for (size_t i = 0; sample_count == 0 || i < sample_count; i += samples_per_frame) {
+            size_t j = i + samples_per_frame;
+            if (i + j > sample_count && sample_count != 0)
+                j = sample_count - i;
+
+            renderer->render(*output, i, j);
             if (!frame_end(*this) || must_stop_)
                 break;
         }
