@@ -54,6 +54,13 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cout << "'" << options->scene_file << "' loaded successfully" << std::endl;
+    std::cout
+        << "'" << options->scene_file << "' loaded successfully\n"
+        << "Summary:\n"
+        << "    " << scene.bsdfs.size() << " BSDF(s)\n"
+        << "    " << scene.lights.size() << " light(s)\n"
+        << "    " << scene.textures.size() << " texture(s)\n"
+        << "    " << scene.images.size() << " image(s)\n";
+
     return 0;
 }
