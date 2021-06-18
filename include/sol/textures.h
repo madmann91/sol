@@ -6,6 +6,7 @@
 
 #include <proto/vec.h>
 #include <proto/utils.h>
+#include <proto/hash.h>
 
 #include "sol/color.h"
 #include "sol/image.h"
@@ -91,7 +92,8 @@ class Texture {
 public:
     const enum class Tag {
         ConstantTexture = 0,
-        ImageTextureBegin = 1,
+        ConstantColorTexture = 1,
+        ImageTextureBegin = 2,
         ImageTextureEnd =
             ImageTextureBegin + BorderMode::tag_count() * ImageFilter::tag_count()
     } tag;
@@ -113,8 +115,8 @@ protected:
     static constexpr Tag make_image_texture_tag() {
         return static_cast<Tag>(
             static_cast<size_t>(Tag::ImageTextureBegin) +
-            BorderMode::tag_count() * ImageFilterType::tag() +
-            BorderModeType::tag());
+            static_cast<size_t>(ImageFilterType::tag()) * BorderMode::tag_count() +
+            static_cast<size_t>(BorderModeType::tag()));
     }
 };
 
@@ -134,11 +136,32 @@ public:
     virtual Color sample_color(const proto::Vec2f& uv) const = 0;
 };
 
-/// Constant texture that evaluates to the same color everywhere.
-class ConstantTexture final : public ColorTexture {
+/// Constant texture that evaluates to the same scalar everywhere.
+class ConstantTexture final : public Texture {
 public:
-    ConstantTexture(const Color& color)
-        : ColorTexture(Tag::ConstantTexture), color_(color)
+    ConstantTexture(float constant)
+        : Texture(Tag::ConstantTexture), constant_(constant)
+    {}
+
+    float sample(const proto::Vec2f&) const override { return constant_; }
+
+    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const {
+        return hasher.combine(tag).combine(constant_);
+    }
+
+    bool equals(const Texture& other) const override {
+        return other.tag == tag && static_cast<const ConstantTexture&>(other).constant_ == constant_;
+    }
+
+private:
+    float constant_;
+};
+
+/// Constant texture that evaluates to the same color everywhere.
+class ConstantColorTexture final : public ColorTexture {
+public:
+    ConstantColorTexture(const Color& color)
+        : ColorTexture(Tag::ConstantColorTexture), color_(color)
     {}
 
     Color sample_color(const proto::Vec2f&) const override { return color_; }
@@ -148,12 +171,19 @@ public:
     }
 
     bool equals(const Texture& other) const override {
-        return other.tag == tag && static_cast<const ConstantTexture&>(other).color_ == color_;
+        return other.tag == tag && static_cast<const ConstantColorTexture&>(other).color_ == color_;
     }
 
 private:
     Color color_;
 };
+
+template <typename T> struct ConstantTextureSelector {};
+template <> struct ConstantTextureSelector<float> { using Type = ConstantTexture; };
+template <> struct ConstantTextureSelector<Color> { using Type = ConstantColorTexture; };
+
+/// Helper to choose a constant texture type based on the constant's type.
+template <typename T> using ConstantTextureType = typename ConstantTextureSelector<T>::Type;
 
 /// Texture made of an image, using the given filter and border handling mode.
 template <typename ImageFilter, typename BorderMode>
@@ -176,11 +206,11 @@ public:
     }
 
     proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const {
-        return hasher.combine(tag).combine(&image);
+        return hasher.combine(tag).combine(&image_);
     }
 
     bool equals(const Texture& other) const override {
-        return other.tag == tag && &static_cast<const ImageTexture&>(other).image() == &image;
+        return other.tag == tag && &static_cast<const ImageTexture&>(other).image() == &image_;
     }
 
     const Image& image() const { return image_; }

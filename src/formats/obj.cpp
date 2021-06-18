@@ -7,8 +7,16 @@
 #include <unordered_map>
 #include <exception>
 #include <cstring>
+#include <filesystem>
+#include <system_error>
+
+#include <proto/hash.h>
 
 #include "sol/color.h"
+#include "sol/textures.h"
+#include "sol/bsdfs.h"
+#include "sol/lights.h"
+#include "sol/triangle_mesh.h"
 
 #include "formats/obj.h"
 
@@ -19,11 +27,19 @@ static constexpr size_t max_line_len = 1024;
 
 struct Index {
     int v, n, t;
+
+    size_t hash() const {
+        return proto::fnv::Hasher().combine(v).combine(n).combine(t);
+    }
+
+    bool operator == (const Index& other) const {
+        return v == other.v && n == other.n && t == other.t;
+    }
 };
 
 struct Face {
     std::vector<Index> indices;
-    int material;
+    size_t material;
 };
 
 struct Group {
@@ -35,19 +51,20 @@ struct Object {
 };
 
 struct Material {
-    RgbColor ka;
-    RgbColor kd;
-    RgbColor ks;
-    RgbColor ke;
-    float ns;
-    float ni;
-    RgbColor tf;
-    float tr;
-    float d;
-    int illum;
+    RgbColor ka = RgbColor::black();
+    RgbColor kd = RgbColor::black();
+    RgbColor ks = RgbColor::black();
+    RgbColor ke = RgbColor::black();
+    RgbColor tf = RgbColor::black();
+    float ns = 0.0f;
+    float ni = 0.0f;
+    float tr = 0.0f;
+    float d = 0.0f;
+    int illum = 0;
     std::string map_ka;
     std::string map_kd;
     std::string map_ks;
+    std::string map_ns;
     std::string map_ke;
     std::string map_d;
     std::string bump;
@@ -62,6 +79,15 @@ struct File {
     std::vector<proto::Vec2f> tex_coords;
     std::vector<std::string> materials;
     std::unordered_set<std::string> mtl_files;
+
+    size_t face_count() const {
+        size_t count = 0;
+        for (auto& object : objects) {
+            for (auto& group : object.groups)
+                count += group.faces.size();
+        }
+        return count;
+    }
 };
 
 inline void remove_eol(char* ptr) {
@@ -121,11 +147,11 @@ inline proto::Vec3f parse_vec3(char* ptr) {
     return v;
 }
 
-inline RgbColor parse_rgb(char* ptr) {
+inline RgbColor parse_rgb_color(char* ptr) {
     RgbColor color;
-    color.r = std::strtof(ptr, &ptr);
-    color.g = std::strtof(ptr, &ptr);
-    color.b = std::strtof(ptr, &ptr);
+    color.r = std::max(std::strtof(ptr, &ptr), 0.0f);
+    color.g = std::max(std::strtof(ptr, &ptr), 0.0f);
+    color.b = std::max(std::strtof(ptr, &ptr), 0.0f);
     return color;
 }
 
@@ -143,9 +169,9 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
     file.objects.emplace_back();
     file.objects[0].groups.emplace_back();
     file.materials.emplace_back("dummy");
-    file.vertices.emplace_back();
-    file.normals.emplace_back();
-    file.tex_coords.emplace_back();
+    file.vertices.emplace_back(0);
+    file.normals.emplace_back(0);
+    file.tex_coords.emplace_back(0);
 
     char line[max_line_len];
     size_t line_count = 0;
@@ -190,7 +216,7 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
                 face.indices[i].v = (face.indices[i].v < 0) ? file.vertices.size()   + face.indices[i].v : face.indices[i].v;
                 face.indices[i].t = (face.indices[i].t < 0) ? file.tex_coords.size() + face.indices[i].t : face.indices[i].t;
                 face.indices[i].n = (face.indices[i].n < 0) ? file.normals.size()    + face.indices[i].n : face.indices[i].n;
-                is_valid &= face.indices[i].v > 0 && face.indices[i].t > 0 && face.indices[i].n > 0;
+                is_valid &= face.indices[i].v > 0 && face.indices[i].t >= 0 && face.indices[i].n >= 0;
             }
 
             if (is_valid)
@@ -253,16 +279,19 @@ static void parse_mtl(std::istream& stream, const std::string& file_name, Materi
             ptr = strip_spaces(ptr + 7);
             char* base = ptr;
             ptr = strip_text(ptr);
-            material = &material_lib[std::string(base, ptr)];
+            std::string name(base, ptr);
+            if (is_strict && material_lib.contains(name))
+                throw SourceError(file_name, { line_count, 1 }, "redefinition of material '" + name + "'");
+            material = &material_lib[name];
         } else if (ptr[0] == 'K' && std::isspace(ptr[2])) {
             if (ptr[1] == 'a')
-                material->ka = parse_rgb(ptr + 3);
+                material->ka = parse_rgb_color(ptr + 3);
             else if (ptr[1] == 'd')
-                material->kd = parse_rgb(ptr + 3);
+                material->kd = parse_rgb_color(ptr + 3);
             else if (ptr[1] == 's')
-                material->ks = parse_rgb(ptr + 3);
+                material->ks = parse_rgb_color(ptr + 3);
             else if (ptr[1] == 'e')
-                material->ke = parse_rgb(ptr + 3);
+                material->ke = parse_rgb_color(ptr + 3);
             else
                 goto unknown_command;
         } else if (ptr[0] == 'N' && std::isspace(ptr[2])) {
@@ -274,7 +303,7 @@ static void parse_mtl(std::istream& stream, const std::string& file_name, Materi
                 goto unknown_command;
         } else if (ptr[0] == 'T' && std::isspace(ptr[2])) {
             if (ptr[1] == 'f')
-                material->tf = parse_rgb(ptr + 3);
+                material->tf = parse_rgb_color(ptr + 3);
             else if (ptr[1] == 'r')
                 material->tr = std::strtof(ptr + 3, &ptr);
             else
@@ -291,6 +320,8 @@ static void parse_mtl(std::istream& stream, const std::string& file_name, Materi
             material->map_ks = std::string(strip_spaces(ptr + 7));
         } else if (!std::strncmp(ptr, "map_Ke", 6) && std::isspace(ptr[6])) {
             material->map_ke = std::string(strip_spaces(ptr + 7));
+        } else if (!std::strncmp(ptr, "map_Ns", 6) && std::isspace(ptr[6])) {
+            material->map_ns = std::string(strip_spaces(ptr + 7));
         } else if (!std::strncmp(ptr, "map_d", 5) && std::isspace(ptr[5])) {
             material->map_d = std::string(strip_spaces(ptr + 6));
         } else if (!std::strncmp(ptr, "bump", 4) && std::isspace(ptr[4])) {
@@ -315,60 +346,172 @@ static void parse_mtl(const std::string& file_name, MaterialLib& material_lib, b
     parse_mtl(is, file_name, material_lib, is_strict);
 }
 
-static void convert_materials(SceneLoader& scene_loader, const MaterialLib& material_lib, bool is_strict) {
-    for (const auto& [name, material] : material_lib) {
-        /*const Bsdf* bsdf = nullptr;
-        switch (material.illum) {
-            case 5: bsdf = new MirrorBsdf(mat.ks); break;
-            case 7: bsdf = new GlassBsdf(1.0f, mat.ni, mat.ks, mat.tf); break;
-            default:
-                Texture* diff_tex = nullptr;
-                if (mat.map_kd != "") {
-                    int id = load_texture(path.base_name() + "/" + mat.map_kd, tex_map, scene);
-                    diff_tex = id >= 0 ? scene.textures[id].get() : nullptr;
-                }
-
-                Texture* spec_tex = nullptr;
-                if (mat.map_ks != "") {
-                    int id = load_texture(path.base_name() + "/" + mat.map_ks, tex_map, scene);
-                    spec_tex = id >= 0 ? scene.textures[id].get() : nullptr;
-                }
-
-                auto kd = dot(mat.kd, luminance);
-                auto ks = dot(mat.ks, luminance);
-                Bsdf* diff = nullptr, *spec = nullptr;
-
-                if (ks > 0 || spec_tex) {
-                    if (!spec_tex) {
-                        scene.textures.emplace_back(new ConstantTexture(mat.ks));
-                        spec_tex = scene.textures.back().get();
-                    }
-                    spec = new GlossyPhongBsdf(*spec_tex, mat.ns);
-                    ks = ks == 0 ? 1.0f : ks;
-                }
-
-                if (kd > 0 || diff_tex) {
-                    if (!diff_tex) {
-                        scene.textures.emplace_back(new ConstantTexture(mat.kd));
-                        diff_tex = scene.textures.back().get();
-                    }
-                    diff = new DiffuseBsdf(*diff_tex);
-                    kd = kd == 0 ? 1.0f : kd;
-                }
-
-                if (spec && diff) {
-                    auto k  = ks / (kd + ks);
-                    auto ty = k < 0.2f || mat.ns < 10.0f // Approximate threshold
-                        ? Bsdf::Type::Diffuse
-                        : Bsdf::Type::Glossy;
-                    bsdf = new CombineBsdf(ty, diff, spec, k);
-                } else {
-                    bsdf = diff ? diff : spec;
-                }
-
-                break;
-        }*/
+template <typename T>
+static const Texture* get_texture(
+    SceneLoader& scene_loader,
+    const std::string& file_name,
+    const T& constant,
+    bool is_strict)
+{
+    using ImageTextureType = ImageTexture<ImageFilter::Bilinear, BorderMode::Repeat>;
+    if (file_name != "") {
+        if (auto image = scene_loader.load_image(file_name))
+            return scene_loader.get_or_insert_texture<ImageTextureType>(*image);
+        else if (is_strict)
+            throw std::runtime_error("cannot load image '" + file_name + "'");
     }
+    return scene_loader.get_or_insert_texture<ConstantTextureType<T>>(constant);
+}
+
+static const ColorTexture* get_color_texture(
+    SceneLoader& scene_loader,
+    const std::string& file_name,
+    const RgbColor& color,
+    bool is_strict)
+{
+    return static_cast<const ColorTexture*>(get_texture(scene_loader, file_name, color, is_strict));
+}
+
+static const Bsdf* convert_material(SceneLoader& scene_loader, const Material& material, bool is_strict) {
+    switch (material.illum) {
+        case 5: {
+            auto ks = get_color_texture(scene_loader, material.map_ks, material.ks, is_strict);
+            return scene_loader.get_or_insert_bsdf<MirrorBsdf>(*ks);
+        }
+        case 7: {
+            auto ks = get_color_texture(scene_loader, material.map_ks, material.ks, is_strict);
+            auto kt = scene_loader.get_or_insert_texture<ConstantColorTexture>(material.tf);
+            auto ni = scene_loader.get_or_insert_texture<ConstantTexture>(1.0f / material.ni);
+            return scene_loader.get_or_insert_bsdf<GlassBsdf>(*ks, static_cast<const ColorTexture&>(*kt), *ni);
+        }
+        default: {
+            // A mix of Phong and diffuse
+            const Bsdf* diff = nullptr, *spec = nullptr;
+            float diff_k = 0, spec_k = 0;
+
+            if (material.ks != RgbColor::black() || material.map_ks != "") {
+                auto ks = get_color_texture(scene_loader, material.map_ks, material.ks, is_strict);
+                auto ns = get_texture(scene_loader, material.map_ns, material.ns, is_strict);
+                spec = scene_loader.get_or_insert_bsdf<PhongBsdf>(*ks, *ns);
+                spec_k = material.map_ks != "" ? 1.0f : material.ks.max_component();
+            }
+
+            if (material.kd != RgbColor::black() || material.map_kd != "") {
+                auto kd = get_color_texture(scene_loader, material.map_kd, material.kd, is_strict);
+                diff = scene_loader.get_or_insert_bsdf<DiffuseBsdf>(*kd);
+                diff_k = material.map_kd != "" ? 1.0f : material.kd.max_component();
+            }
+
+            if (spec && diff) {
+                auto k = scene_loader.get_or_insert_texture<ConstantTexture>(spec_k / (diff_k + spec_k));
+                return scene_loader.get_or_insert_bsdf<InterpBsdf>(diff, spec, *k);
+            }
+            return diff ? diff : spec;
+        }
+    }
+}
+
+static void check_materials(File& file, const MaterialLib& material_lib, bool is_strict) {
+    for (auto& material : file.materials) {
+        if (!material_lib.contains(material)) {
+            if (is_strict)
+                throw std::runtime_error("cannot find material named '" + material + "'");
+            material = "dummy";
+        }
+    }
+}
+
+static std::unique_ptr<Scene::Node> build_mesh(
+    SceneLoader& scene_loader,
+    const File& file,
+    const MaterialLib& material_lib,
+    bool is_strict)
+{
+    auto hash = [] (const Index& idx) { return idx.hash(); };
+    std::unordered_map<Index, size_t, decltype(hash)> index_map(file.vertices.size(), std::move(hash));
+
+    std::vector<size_t> indices;
+    std::vector<proto::Vec3f> vertices;
+    std::vector<proto::Vec3f> normals;
+    std::vector<proto::Vec2f> tex_coords;
+    std::vector<const Bsdf*> bsdfs;
+    std::vector<size_t> normals_to_fix;
+    std::unordered_map<size_t, const TriangleLight*> lights;
+
+    vertices.reserve(file.vertices.size());
+    normals.reserve(file.normals.size());
+    tex_coords.reserve(file.tex_coords.size());
+    indices.reserve(file.face_count() * 3);
+
+    for (auto& object : file.objects) {
+        for (auto& group : object.groups) {
+            for (auto& face : group.faces) {
+                // Make a unique vertex for each possible combination of
+                // vertex, texture coordinate, and normal index.
+                for (auto& index : face.indices) {
+                    if (index_map.emplace(index, index_map.size()).second) {
+                        // Mark this normal so that we can fix it later,
+                        // if it is missing from the OBJ file.
+                        if (index.n == 0)
+                            normals_to_fix.push_back(normals.size());
+                        vertices  .push_back(file.vertices  [index.v]);
+                        normals   .push_back(file.normals   [index.n]);
+                        tex_coords.push_back(file.tex_coords[index.t]);
+                    }
+                }
+
+                // Get a BSDF for the face
+                auto& material = material_lib.at(file.materials[face.material]);
+                auto bsdf = convert_material(scene_loader, material, is_strict);
+                bool is_emissive = material.ke != Color::black() || material.map_ke != "";
+
+                // Add triangles to the mesh
+                size_t first_index = index_map[face.indices[0]];
+                size_t cur_index = index_map[face.indices[1]];
+                for (size_t i = 1, n = face.indices.size() - 1; i < n; ++i) {
+                    auto next_index = index_map[face.indices[i + 1]];
+
+                    if (is_emissive) {
+                        proto::Trianglef triangle(vertices[first_index], vertices[cur_index], vertices[next_index]);
+                        auto intensity = get_color_texture(scene_loader, material.map_ke, material.ke, is_strict);
+                        auto light = scene_loader.get_or_insert_light<TriangleLight>(triangle, *intensity);
+                        lights.emplace(indices.size() / 3, static_cast<const TriangleLight*>(light));
+                    }
+
+                    indices.push_back(first_index);
+                    indices.push_back(cur_index);
+                    indices.push_back(next_index);
+                    bsdfs.push_back(bsdf);
+
+                    cur_index = next_index;
+                }
+            }
+        }
+    }
+
+    // Fix normals that are missing.
+    if (!normals_to_fix.empty()) {
+        std::vector<proto::Vec3f> smooth_normals(normals.size(), proto::Vec3f(0));
+        for (size_t i = 0; i < indices.size(); i += 3) {
+            auto normal = proto::Trianglef(
+                vertices[indices[i + 0]],
+                vertices[indices[i + 1]],
+                vertices[indices[i + 2]]).normal();
+            smooth_normals[indices[i + 0]] += normal;
+            smooth_normals[indices[i + 1]] += normal;
+            smooth_normals[indices[i + 2]] += normal;
+        }
+        for (auto normal_index : normals_to_fix)
+            normals[normal_index] = proto::normalize(smooth_normals[normal_index]);
+    }
+
+    return std::make_unique<TriangleMesh>(
+        std::move(indices),
+        std::move(vertices),
+        std::move(normals),
+        std::move(tex_coords),
+        std::move(bsdfs),
+        std::move(lights));
 }
 
 std::unique_ptr<Scene::Node> load(SceneLoader& scene_loader, const std::string_view& file_name) {
@@ -376,10 +519,14 @@ std::unique_ptr<Scene::Node> load(SceneLoader& scene_loader, const std::string_v
 
     auto file = parse_obj(std::string(file_name), is_strict);
     MaterialLib material_lib;
-    for (auto& mtl_file : file.mtl_files)
-        parse_mtl(mtl_file, material_lib, is_strict);
+    for (auto& mtl_file : file.mtl_files) {
+        std::error_code err_code;
+        auto full_path = std::filesystem::absolute(file_name, err_code).parent_path().string() + "/" + mtl_file;
+        parse_mtl(full_path, material_lib, is_strict);
+    }
 
-    convert_materials(scene_loader, material_lib, is_strict);
+    check_materials(file, material_lib, is_strict);
+    return build_mesh(scene_loader, file, material_lib, is_strict);
 }
 
 } // namespace sol::obj

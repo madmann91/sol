@@ -43,29 +43,25 @@ public:
     // Loads the given file into the scene.
     bool load(const std::string_view& file_name);
 
-    // Loads the given file into the scene using the given directory as
-    // a base directory when loading files with relative paths.
-    bool load(const std::string_view& file_name, const std::string_view& base_dir);
-
     // Loads an image or returns an already loaded one.
     const Image* load_image(const std::string& file_name);
 
     // Creates a new BSDF or returns an existing one.
     template <typename T, typename... Args>
     const Bsdf* get_or_insert_bsdf(Args&&... args) {
-        return get_or_insert<T>(bsdfs_, scene_.bsdfs, std::forward<Args>(args)...); 
+        return get_or_insert<T, Bsdf>(bsdfs_, scene_.bsdfs, std::forward<Args>(args)...); 
     }
 
     // Creates a new texture or returns an existing one.
     template <typename T, typename... Args>
     const Texture* get_or_insert_texture(Args&&... args) {
-        return get_or_insert<T>(textures_, scene_.textures, std::forward<Args>(args)...); 
+        return get_or_insert<T, Texture>(textures_, scene_.textures, std::forward<Args>(args)...); 
     }
 
     // Creates a new light or returns an existing one.
     template <typename T, typename... Args>
     const Light* get_or_insert_light(Args&&... args) {
-        return get_or_insert<T>(lights_, scene_.lights, std::forward<Args>(args)...); 
+        return get_or_insert<T, Light>(lights_, scene_.lights, std::forward<Args>(args)...); 
     }
 
 private:
@@ -74,8 +70,8 @@ private:
     void parse_node(const toml::table&);
     void parse_scene(const toml::table&);
 
-    template <typename T, typename Set, typename Container, typename... Args>
-    static const T* get_or_insert(Set& set, Container& container, Args&&... args) {
+    template <typename T, typename U, typename Set, typename Container, typename... Args>
+    static const U* get_or_insert(Set& set, Container& container, Args&&... args) {
         T t(std::forward<Args>(args)...);
         if (auto it = set.find(&t); it != set.end())
             return *it;
@@ -96,7 +92,7 @@ private:
     struct Compare {
         template <typename T>
         bool operator () (const T* left, const T* right) const {
-            return left->equals(right);
+            return left->equals(*right);
         }
     };
 

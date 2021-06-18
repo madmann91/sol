@@ -18,12 +18,6 @@ SceneLoader::SceneLoader(Scene& scene, const Scene::Defaults& defaults, std::ost
 SceneLoader::~SceneLoader() = default;
 
 bool SceneLoader::load(const std::string_view& file_name) {
-    std::error_code err_code;
-    auto base_dir = std::filesystem::absolute(file_name, err_code).parent_path();
-    return !err_code ? load(file_name, base_dir.string()) : false;
-}
-
-bool SceneLoader::load(const std::string_view& file_name, const std::string_view& base_dir) {
     try {
         auto table = toml::parse_file(file_name);
         if (auto camera = table["camera"].as_table())
@@ -91,7 +85,7 @@ void SceneLoader::parse_node(const toml::table& table) {
         else
             throw error_at(table, "unknown file format for '" + file + "'");
     }
-    throw error_at(table, "unkown node type '" + type + "'");
+    throw error_at(table, "unknown node type '" + type + "'");
 }
 
 bool Scene::load(const std::string_view& file_name, const Defaults& defaults, std::ostream* err_out) {

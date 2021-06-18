@@ -41,7 +41,7 @@ bool PointLight::equals(const Light& other) const {
 TriangleLight::TriangleLight(const proto::Trianglef& triangle, const ColorTexture& intensity)
     : Light(Tag::TriangleLight), triangle_(triangle), intensity_(intensity)
 {
-    normal_ = proto::normalize(triangle_.normal());
+    normal_ = triangle_.normal();
     inv_area_ = 1.0f / triangle_.area();
 }
 
@@ -60,7 +60,7 @@ LightSample TriangleLight::sample_emission(Sampler& sampler) const {
 }
 
 EmissionValue TriangleLight::emission(const proto::Vec3f& dir, const proto::Vec2f& uv) const {
-    auto cos = proto::cosine_hemisphere_pdf(proto::dot(dir, proto::normalize(triangle_.normal())));
+    auto cos = proto::cosine_hemisphere_pdf(proto::dot(dir, triangle_.normal()));
     return cos > 0
         ? EmissionValue { intensity_.sample_color(uv), inv_area_, cos }
         : EmissionValue { Color::black(), 1.0f, 1.0f };

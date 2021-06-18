@@ -1,6 +1,8 @@
 #ifndef SOL_COLOR_H
 #define SOL_COLOR_H
 
+#include <algorithm>
+
 #include <proto/utils.h>
 
 namespace sol {
@@ -50,6 +52,9 @@ struct RgbColor {
     Hasher& hash(Hasher& hasher) const {
         return hasher.combine(r).combine(g).combine(b);
     }
+
+    float max_component() const { return std::max(r, std::max(g, b)); }
+    float min_component() const { return std::min(r, std::min(g, b)); }
 
     float luminance() const { return r * 0.2126f + g * 0.7152f + b * 0.0722f; }
     bool is_black() const { return r == 0.0f && g == 0.0f && b == 0.0f; }

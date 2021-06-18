@@ -36,7 +36,7 @@ TriangleMesh::TriangleMesh(
     std::vector<proto::Vec3f>&& normals,
     std::vector<proto::Vec2f>&& tex_coords,
     std::vector<const Bsdf*>&& bsdfs,
-    std::unordered_map<size_t, const TriangleLight*> lights)
+    std::unordered_map<size_t, const TriangleLight*>&& lights)
     : indices_(std::move(indices))
     , vertices_(std::move(vertices))
     , normals_(std::move(normals))
@@ -56,7 +56,7 @@ std::optional<Hit> TriangleMesh::intersect_closest(proto::Rayf& ray) const {
                 auto triangle_index = bvh_data_->bvh.prim_indices[leaf.first_index + i];
                 auto triangle = triangle_at(triangle_index);
                 if (auto uv = triangle.intersect(ray))
-                    hit_info = std::make_optional(HitInfo { triangle_index, triangle.normal(), uv->first, uv->second });
+                    hit_info = std::make_optional(HitInfo { triangle_index, triangle.raw_normal(), uv->first, uv->second });
             }
             return hit_info;
         });

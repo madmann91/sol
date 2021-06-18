@@ -21,7 +21,7 @@ public:
         std::vector<proto::Vec3f>&& normals,
         std::vector<proto::Vec2f>&& tex_coords,
         std::vector<const Bsdf*>&& bsdfs,
-        std::unordered_map<size_t, const TriangleLight*> lights);
+        std::unordered_map<size_t, const TriangleLight*>&& lights);
     ~TriangleMesh();
 
     std::optional<Hit> intersect_closest(proto::Rayf&) const override;
