@@ -39,10 +39,8 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
     ray.tmin = config_.ray_offset;
     for (size_t path_len = 0; path_len < config_.max_path_len; path_len++) {
         auto hit = scene_.intersect_closest(ray);
-        if (!hit) {
-            color = RgbColor(1, 0, 1);
+        if (!hit)
             break;
-        }
 
         auto out_dir = -ray.dir;
 
@@ -54,7 +52,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
 
             auto emission = hit->light->emission(out_dir, hit->surf_info.surf_coords);
             auto mis_weight = Renderer::balance_heuristic(pdf_prev_bounce_area, emission.pdf_area * light_pick_prob);
-            color += RgbColor::constant(1);//throughput * emission.intensity * mis_weight;
+            color += throughput * emission.intensity * mis_weight;
         }
 
         if (!hit->bsdf)
@@ -84,11 +82,11 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
                 auto mis_weight = light->has_area() ?
                     Renderer::balance_heuristic(pdf_light, pdf_bounce * geom_term) : 1.0f;
 
-                color += RgbColor::constant(1);
-                    /*light_sample.intensity *
+                color +=
+                    light_sample.intensity *
                     throughput *
                     hit->bsdf->eval(in_dir, hit->surf_info, out_dir) *
-                    (light_sample.cos * geom_term * mis_weight / pdf_light);*/
+                    (light_sample.cos * geom_term * mis_weight / pdf_light);
             }
         }
 
