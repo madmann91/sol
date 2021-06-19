@@ -1,4 +1,5 @@
 #include <cassert>
+#include <algorithm>
 
 #include "sol/image.h"
 
@@ -9,14 +10,14 @@
 
 namespace sol {
 
+void Image::clear(float value) {
+    for (auto& channel : channels_)
+        std::fill(channel.get(), channel.get() + width_ * height_, value);
+}
+
 void Image::scale(float value) {
-    for (auto& channel : channels_) {
-        for (size_t y = 0; y < height_; ++y) {
-            for (size_t x = 0; x < width_; ++x) {
-                channel[y * width_ + x] *= value;
-            }
-        }
-    }
+    for (auto& channel : channels_)
+        std::transform(channel.get(), channel.get() + width_ * height_, channel.get(), [&] (float x) { return x * value; });
 }
 
 bool Image::save(const std::string_view& path, Format format) const {

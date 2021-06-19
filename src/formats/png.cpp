@@ -11,14 +11,14 @@ namespace sol::png {
 #ifdef SOL_ENABLE_PNG
 std::optional<Image> load(const std::string_view& path) {
     std::string path_string(path);
-    auto close_file = [] (FILE* file) { if (file) fclose(file); };
-    auto file = std::unique_ptr<FILE, decltype(close_file)>(fopen(path_string.c_str(), "rb"), close_file);
+    auto file = fopen(path_string.c_str(), "rb");
     if (!file)
         return std::nullopt;
+    std::unique_ptr<FILE, decltype(&fclose)> file_ptr(file, fclose);
 
     // Read signature
     png_byte sig[8];
-    fread(sig, 1, 8, file.get());
+    fread(sig, 1, 8, file);
     if (!png_sig_cmp(sig, 0, 8))
         return std::nullopt;
 
@@ -38,7 +38,7 @@ std::optional<Image> load(const std::string_view& path) {
     }
 
     png_set_sig_bytes(png_ptr, 8);
-    png_init_io(png_ptr, file.get());
+    png_init_io(png_ptr, file);
     png_read_info(png_ptr, info_ptr);
 
     size_t width  = png_get_image_width(png_ptr, info_ptr);
@@ -75,10 +75,10 @@ std::optional<Image> load(const std::string_view& path) {
 
 bool save(const Image& image, const std::string_view& path) {
     std::string path_string(path);
-    auto close_file = [] (FILE* file) { if (file) fclose(file); };
-    auto file = std::unique_ptr<FILE, decltype(close_file)>(fopen(path_string.c_str(), "wb"), close_file);
+    auto file = fopen(path_string.c_str(), "wb");
     if (!file)
         return false;
+    std::unique_ptr<FILE, decltype(&fclose)> file_ptr(file, fclose);
 
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
     if (!png_ptr)
@@ -97,7 +97,7 @@ bool save(const Image& image, const std::string_view& path) {
         return false;
     }
 
-    png_init_io(png_ptr, file.get());
+    png_init_io(png_ptr, file);
 
     png_set_IHDR(
         png_ptr, info_ptr, image.width(), image.height(), 8,

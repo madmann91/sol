@@ -25,14 +25,33 @@ struct Viewport {
     }
 };
 
+namespace detail {
+
+struct RenderJobDefaults {
+    size_t output_width = 1080;
+    size_t output_height = 720;
+    size_t sample_count = 100;
+    size_t samples_per_frame = 2;
+};
+
+} // namespace detail
+
+/// A rendering job, with accompanying scene data and renderer.
+/// Rendering jobs should only be controlled from a single thread
+/// (i.e. calling `wait/start/cancel` from different threads is undefined behavior).
 struct RenderJob {
-    size_t sample_count = 0;            ///< Number of samples to render (0 = unlimited, until cancellation).
-    size_t samples_per_frame = 1;       ///< Number of samples per frame (larger = higher throughput but higher latency)
+    using Defaults = detail::RenderJobDefaults;
+
+    size_t sample_count;                ///< Number of samples to render (0 = unlimited, until cancellation).
+    size_t samples_per_frame;           ///< Number of samples per frame (larger = higher throughput but higher latency)
     std::unique_ptr<Scene> scene;       ///< Scene to render.
     std::unique_ptr<Image> output;      ///< Output image, where samples are accumulated.
     std::unique_ptr<Renderer> renderer; ///< Renderer to use.
 
-    RenderJob();
+    /// Creates an empty rendering job.
+    /// The renderer, scene, and output are left uninitialized.
+    RenderJob(const Defaults& = {});
+    RenderJob(const RenderJob&) = delete;
     RenderJob(RenderJob&&);
     ~RenderJob();
 
@@ -54,13 +73,17 @@ struct RenderJob {
     void cancel();
 
     /// Loads a rendering job from the given configuration file.
-    static std::optional<RenderJob> load(const std::string& file_name, std::ostream* err_out = nullptr);
+    static std::optional<RenderJob> load(
+        const std::string& file_name,
+        const Defaults& defaults = {},
+        std::ostream* err_out = nullptr);
 
 private:
+    static RenderJob load_and_throw_on_error(const std::string&, const Defaults&);
+
     std::thread render_thread_;
     std::mutex mutex_;
     std::condition_variable done_cond_;
-    bool must_stop_;
     bool is_done_;
 };
 

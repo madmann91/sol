@@ -80,7 +80,7 @@ public:
     static inline proto::Vec2f sample_pixel(Sampler& sampler, size_t x, size_t y, size_t w, size_t h) {
         return proto::Vec2f(
             (x + sampler()) * (2.0f / static_cast<float>(w)) - 1.0f,
-            (y + sampler()) * (2.0f / static_cast<float>(h)) - 1.0f);
+            1.0f - (y + sampler()) * (2.0f / static_cast<float>(h)));
     }
 
     /// Computes a Russian Roulette survival probability from the luminance of the current path throughput.

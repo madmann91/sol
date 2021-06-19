@@ -30,6 +30,14 @@ struct SourceError : public std::runtime_error {
             std::to_string(pos.row) + ":" +
             std::to_string(pos.col) + ")";
     }
+
+    static SourceError from_toml(const toml::source_region& source, const std::string_view& message) {
+        return SourceError(*source.path, { source.begin.line, source.begin.column }, message);
+    }
+
+    static SourceError from_toml(const toml::parse_error& error) {
+        return from_toml(error.source(), error.description());
+    }
 };
 
 /// Internal object used by scene file loaders.
@@ -42,6 +50,10 @@ public:
 
     // Loads the given file into the scene.
     bool load(const std::string& file_name);
+
+    // Loads the given file into the scene.
+    // May throw an exception, and the error output stream is not written to.
+    void load_and_throw_on_error(const std::string& file_name);
 
     // Loads an image or returns an already loaded one.
     const Image* load_image(const std::string& file_name);
@@ -67,10 +79,8 @@ public:
     void insert_node(const std::string&, std::unique_ptr<Scene::Node>&&);
 
 private:
-    static proto::Vec3f parse_vec3(toml::node_view<const toml::node>, const proto::Vec3f&);
-    std::unique_ptr<Camera> parse_camera(const toml::table&);
-    void parse_node(const toml::table&, const std::string&);
-    void parse_scene(const toml::table&);
+    std::unique_ptr<Camera> create_camera(const toml::table&);
+    void create_node(const toml::table&, const std::string&);
 
     template <typename T, typename U, typename Set, typename Container, typename... Args>
     static const U* get_or_insert(Set& set, Container& container, Args&&... args) {

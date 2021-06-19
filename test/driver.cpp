@@ -7,19 +7,23 @@
 #include <sol/render_job.h>
 
 struct Options {
-    std::string scene_file;
     std::string job_file;
     std::string out_file = "render.exr";
+    sol::Image::Format out_format = sol::Image::Format::Auto;
 };
 
 static void usage() {
     Options default_options;
     std::cout <<
-        "Usage: driver [options] scene.toml job.toml\n"
+        "Usage: driver [options] job.toml\n"
         "Available options:\n"
         "  -h          --help  Shows this message\n"
         "  -o <image>          Sets the output image file name (default: \'"
-        << default_options.out_file << "\')" << std::endl;
+        << default_options.out_file << "\')\n"
+        "  -f <format>         Sets the output image format (default: auto)\n"
+        "\nValid image formats:\n"
+        "  auto, png, jpeg, exr, tiff"
+        << std::endl;
 }
 
 bool must_have_arg(int i, int argc, char** argv) {
@@ -39,15 +43,25 @@ static std::optional<Options> parse_options(int argc, char** argv) {
                 usage();
                 return std::nullopt;
             } else if (argv[i] == "-o"sv) {
-                if (!must_have_arg(i, argc, argv))
+                if (!must_have_arg(i++, argc, argv))
                     return std::nullopt;
-                options.out_file = argv[++i];
+                options.out_file = argv[i];
+            } else if (argv[i] == "-f"sv) {
+                if (!must_have_arg(i++, argc, argv))
+                    return std::nullopt;
+                     if (argv[i] == "auto"sv) options.out_format = sol::Image::Format::Auto;
+                else if (argv[i] == "png"sv)  options.out_format = sol::Image::Format::Png;
+                else if (argv[i] == "jpeg"sv) options.out_format = sol::Image::Format::Jpeg;
+                else if (argv[i] == "tiff"sv) options.out_format = sol::Image::Format::Tiff;
+                else if (argv[i] == "exr"sv)  options.out_format = sol::Image::Format::Exr;
+                else {
+                    std::cerr << "Unknown image format '" << argv[i] << "'" << std::endl;
+                    return std::nullopt;
+                }
             } else {
                 std::cerr << "Unknown option '" << argv[i] << "'" << std::endl;
                 return std::nullopt;
             }
-        } else if (options.scene_file.empty()) {
-            options.scene_file = argv[i];
         } else if (options.job_file.empty()) {
             options.job_file = argv[i];
         } else {
@@ -55,13 +69,27 @@ static std::optional<Options> parse_options(int argc, char** argv) {
             return std::nullopt;
         }
     }
-    if (options.scene_file.empty() || options.job_file.empty()) {
+    if (options.job_file.empty()) {
         std::cerr <<
-            "Missing scene and/or render job file\n"
+            "Missing render job file\n"
             "Type 'driver -h' to show usage" << std::endl;
         return std::nullopt;
     }
     return std::make_optional(options);
+}
+
+static bool save_image(const sol::Image& image, const Options& options) {
+    if (!image.save(options.out_file, options.out_format)) {
+        if (options.out_format != sol::Image::Format::Auto &&
+            image.save(options.out_file, sol::Image::Format::Auto)) {
+            std::cout << "Image could not be saved in the given format, so the default format was used instead" << std::endl;
+            return true;
+        }
+        std::cout << "Could not save image to '" << options.out_file << "'" << std::endl;
+        return false;
+    }
+    std::cout << "Image was saved to '" << options.out_file << "'" << std::endl;
+    return true;
 }
 
 int main(int argc, char** argv) {
@@ -70,32 +98,26 @@ int main(int argc, char** argv) {
         return 1; 
 
     std::ostringstream err_stream;
-    auto scene = sol::Scene::load(options->scene_file, {}, &err_stream);
-    if (!scene) {
+    auto render_job = sol::RenderJob::load(options->job_file, {}, &err_stream);
+    if (!render_job) {
         std::cerr << err_stream.str() << std::endl;
         return 1;
     }
 
     std::cout
-        << "Scene file '" << options->scene_file << "' loaded successfully\n"
-        << "Summary:\n"
-        << "    " << scene->bsdfs.size() << " BSDF(s)\n"
-        << "    " << scene->lights.size() << " light(s)\n"
-        << "    " << scene->textures.size() << " texture(s)\n"
-        << "    " << scene->images.size() << " image(s)\n";
-
-    auto render_job = sol::RenderJob::load(options->job_file, &err_stream);
-    if (!render_job) {
-        std::cerr << err_stream.str() << std::endl;
-        return 1;
-    }
+        << "Scene summary:\n"
+        << "    " << render_job->scene->bsdfs.size() << " BSDF(s)\n"
+        << "    " << render_job->scene->lights.size() << " light(s)\n"
+        << "    " << render_job->scene->textures.size() << " texture(s)\n"
+        << "    " << render_job->scene->images.size() << " image(s)\n";
 
     render_job->start();
     render_job->wait();
 
     if (!options->out_file.empty()) {
         render_job->output->scale(1.0f / static_cast<float>(render_job->sample_count));
-        render_job->output->save(options->out_file);
+        if (!save_image(*render_job->output, *options))
+            return 1;
     }
     return 0;
 }

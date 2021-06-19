@@ -32,6 +32,7 @@ public:
     Image(size_t width, size_t height, size_t channel_count)
         : width_(width), height_(height)
     {
+        channels_.resize(channel_count);
         for (size_t i = 0; i < channel_count; ++i)
             channels_[i] = std::make_unique<float[]>(width * height);
     }
@@ -59,6 +60,9 @@ public:
 
     Channel& channel(size_t i) { return channels_[i]; }
     const Channel& channel(size_t i) const { return channels_[i]; }
+
+    /// Resets every pixel in the image to the given value.
+    void clear(float value = 0.0f);
 
     /// Scales every pixel in the image by the given value.
     void scale(float value);

@@ -5,6 +5,7 @@ add_library(sol
     formats/exr.cpp
     formats/obj.cpp
     algorithms/path_tracer.cpp
+    toml_parser.cpp
     triangle_mesh.cpp
     image.cpp
     cameras.cpp
@@ -29,6 +30,8 @@ target_include_directories(sol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(sol PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     $<INSTALL_INTERFACE:include>)
+
+set_target_properties(sol PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 # Add optional image libraries
 find_package(PNG QUIET)

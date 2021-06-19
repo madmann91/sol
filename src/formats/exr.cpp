@@ -53,8 +53,16 @@ bool save(const Image& image, const std::string_view& path) {
     InitEXRImage(&exr_image);
 
     std::vector<float*> images(image.channel_count());
-    for (size_t i = 0; i < image.channel_count(); ++i)
-        images[i] = image.channel(i).get();
+    if (image.channel_count() >= 3) {
+        images[0] = image.channel(2).get();
+        images[1] = image.channel(1).get();
+        images[2] = image.channel(0).get();
+        for (size_t i = 3; i < image.channel_count(); ++i)
+            images[i] = image.channel(i).get();
+    } else {
+        for (size_t i = 0; i < image.channel_count(); ++i)
+            images[i] = image.channel(i).get();
+    }
 
     exr_image.images = reinterpret_cast<unsigned char**>(images.data());
     exr_image.width = image.width();
@@ -65,19 +73,16 @@ bool save(const Image& image, const std::string_view& path) {
     exr_header.channels = channel_infos.data();
 
     size_t name_len = sizeof(EXRChannelInfo::name);
-    switch (image.channel_count()) {
-        default:
-            for (size_t i = 4; i < image.channel_count(); ++i) {
-                auto channel_name = "Channel_" + std::to_string(i);
-                std::strncpy(exr_header.channels[i].name, channel_name.c_str(), name_len);
-            }
-            [[fallthrough]];
-        case 4: std::strncpy(exr_header.channels[3].name, "A", name_len); [[fallthrough]];
-        case 3: std::strncpy(exr_header.channels[2].name, "B", name_len); [[fallthrough]];
-        case 2: std::strncpy(exr_header.channels[1].name, "G", name_len); [[fallthrough]];
-        case 1: std::strncpy(exr_header.channels[0].name, "R", name_len); [[fallthrough]];
-        case 0:
-            break;
+    for (size_t i = 0; i < image.channel_count(); ++i) {
+        auto channel_name = "Channel_" + std::to_string(i);
+        std::strncpy(exr_header.channels[i].name, channel_name.c_str(), name_len);
+    }
+    if (image.channel_count() >= 3) {
+        if (image.channel_count() >= 4)
+            std::strncpy(exr_header.channels[3].name, "A", name_len);
+        std::strncpy(exr_header.channels[2].name, "R", name_len);
+        std::strncpy(exr_header.channels[1].name, "G", name_len);
+        std::strncpy(exr_header.channels[0].name, "B", name_len);
     }
 
     std::vector<int> pixel_types(image.channel_count(), TINYEXR_PIXELTYPE_FLOAT);
