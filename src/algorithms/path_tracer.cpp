@@ -51,7 +51,8 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
                 pdf_prev_bounce * proto::dot(out_dir, hit->surf_info.normal()) / (ray.tmax * ray.tmax);
 
             auto emission = hit->light->emission(out_dir, hit->surf_info.surf_coords);
-            auto mis_weight = Renderer::balance_heuristic(pdf_prev_bounce_area, emission.pdf_area * light_pick_prob);
+            auto mis_weight = pdf_prev_bounce != 0.0f ?
+                Renderer::balance_heuristic(pdf_prev_bounce_area, emission.pdf_area * light_pick_prob) : 1.0f;
             color += throughput * emission.intensity * mis_weight;
         }
 
@@ -65,7 +66,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
             auto light_sample = light->sample_area(sampler, hit->surf_info.point);
 
             auto in_dir   = light_sample.pos - hit->surf_info.point;
-            auto cos_surf = proto::dot(in_dir, hit->surf_info.point);
+            auto cos_surf = proto::dot(in_dir, hit->surf_info.normal());
             auto shadow_ray = proto::Rayf::between_points(hit->surf_info.point, light_sample.pos, config_.ray_offset);
 
             if (cos_surf > 0 && !light_sample.intensity.is_black() && !scene_.intersect_any(shadow_ray)) {
@@ -77,7 +78,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
 
                 auto pdf_bounce = light->has_area() ? hit->bsdf->pdf(in_dir, hit->surf_info, out_dir) : 0.0f;
                 auto pdf_light  = light_sample.pdf_area * light_pick_prob;
-                auto geom_term  = cos_surf / light_dist_squared;
+                auto geom_term  = light_sample.cos * cos_surf / light_dist_squared;
 
                 auto mis_weight = light->has_area() ?
                     Renderer::balance_heuristic(pdf_light, pdf_bounce * geom_term) : 1.0f;
@@ -86,7 +87,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
                     light_sample.intensity *
                     throughput *
                     hit->bsdf->eval(in_dir, hit->surf_info, out_dir) *
-                    (light_sample.cos * geom_term * mis_weight / pdf_light);
+                    (geom_term * mis_weight / pdf_light);
             }
         }
 
