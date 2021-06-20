@@ -83,11 +83,6 @@ public:
             1.0f - (y + sampler()) * (2.0f / static_cast<float>(h)));
     }
 
-    /// Computes a Russian Roulette survival probability from the luminance of the current path throughput.
-    static inline float survival_prob(float luminance, float min_prob, float max_prob) {
-        return proto::robust_min(proto::robust_max(luminance, min_prob), max_prob);
-    }
-
     /// Computes the balance heuristic given the probability density values for two techniques.
     static inline float balance_heuristic(float x, float y) {
         return x / (x + y);

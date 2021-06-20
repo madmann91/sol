@@ -26,7 +26,7 @@ void PathTracer::render(Image& image, size_t sample_index, size_t sample_count) 
 
 static inline const Light* pick_light(Sampler& sampler, const Scene& scene) {
     // TODO: Sample lights adaptively
-    auto light_index = proto::clamp<size_t>(sampler() * scene.lights.size(), 0, scene.lights.size() - 1);
+    auto light_index = std::min(static_cast<size_t>(sampler() * scene.lights.size()), scene.lights.size() - 1);
     return scene.lights[light_index].get();
 }
 
@@ -94,7 +94,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
         // Russian Roulette
         auto survival_prob = 1.0f;
         if (path_len >= config_.min_russian_roulette_path_len) {
-            survival_prob = Renderer::survival_prob(
+            survival_prob = proto::clamp(
                 throughput.luminance(),
                 config_.min_survival_prob,
                 config_.max_survival_prob);
