@@ -17,14 +17,6 @@ namespace sol {
 struct Scene;
 class Renderer;
 
-struct Viewport {
-    size_t width, height;
-
-    float aspect_ratio() const {
-        return static_cast<float>(width) / static_cast<float>(height);
-    }
-};
-
 namespace detail {
 
 struct RenderJobDefaults {
@@ -54,8 +46,6 @@ struct RenderJob {
     RenderJob(const RenderJob&) = delete;
     RenderJob(RenderJob&&);
     ~RenderJob();
-
-    Viewport viewport() const { return Viewport { output->width(), output->height() }; }
 
     /// Starts the rendering job, producing samples into the output image.
     /// This function takes a callback that is called after a frame has been rendered.
