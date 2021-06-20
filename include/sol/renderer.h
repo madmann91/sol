@@ -64,15 +64,7 @@ public:
 
     /// Generates a seed suitable to initialize a sampler, given a frame index, and a pixel position (2D).
     static inline uint32_t pixel_seed(size_t frame_index, size_t x, size_t y) {
-        return proto::fnv::Hasher()
-            .combine(frame_index)
-            .combine(x)
-            .combine(y);
-    }
-
-    /// Generates a seed suitable to initialize a sampler, given a frame index, and a pixel position (1D).
-    static inline uint32_t pixel_seed(size_t frame_index, size_t x) {
-        return proto::fnv::Hasher().combine(frame_index).combine(x);
+        return proto::fnv::Hasher().combine(x).combine(y).combine(frame_index);
     }
 
     /// Samples the area within a pixel, using the given sampler.

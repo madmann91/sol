@@ -31,6 +31,9 @@ static inline const Light* pick_light(Sampler& sampler, const Scene& scene) {
 }
 
 Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
+    // For debugging. MIS should always be enabled since it really improves image quality.
+    static constexpr bool disable_mis = true;
+
     auto light_pick_prob = 1.0f / scene_.lights.size();
     auto pdf_prev_bounce = 0.0f;
     auto throughput = Color::constant(1.0f);
@@ -53,6 +56,8 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
             auto emission = hit->light->emission(out_dir, hit->surf_info.surf_coords);
             auto mis_weight = pdf_prev_bounce != 0.0f ?
                 Renderer::balance_heuristic(pdf_prev_bounce_area, emission.pdf_area * light_pick_prob) : 1.0f;
+            if constexpr (disable_mis)
+                mis_weight = pdf_prev_bounce != 0 ? 0 : 1;
             color += throughput * emission.intensity * mis_weight;
         }
 
@@ -71,23 +76,25 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
 
             if (cos_surf > 0 && !light_sample.intensity.is_black() && !scene_.intersect_any(shadow_ray)) {
                 // Normalize the incoming direction
-                auto light_dist = proto::length(in_dir);
-                auto light_dist_squared = light_dist * light_dist;
-                cos_surf /= light_dist;
-                in_dir   /= light_dist;
+                auto inv_light_dist = 1.0f / proto::length(in_dir);
+                cos_surf *= inv_light_dist;
+                in_dir   *= inv_light_dist;
 
                 auto pdf_bounce = light->has_area() ? hit->bsdf->pdf(in_dir, hit->surf_info, out_dir) : 0.0f;
                 auto pdf_light  = light_sample.pdf_area * light_pick_prob;
-                auto geom_term  = light_sample.cos * cos_surf / light_dist_squared;
+                auto geom_term  = light_sample.cos * inv_light_dist * inv_light_dist;
 
                 auto mis_weight = light->has_area() ?
                     Renderer::balance_heuristic(pdf_light, pdf_bounce * geom_term) : 1.0f;
+
+                if constexpr (disable_mis)
+                    mis_weight = 1;
 
                 color +=
                     light_sample.intensity *
                     throughput *
                     hit->bsdf->eval(in_dir, hit->surf_info, out_dir) *
-                    (geom_term * mis_weight / pdf_light);
+                    (geom_term * cos_surf * mis_weight / pdf_light);
             }
         }
 

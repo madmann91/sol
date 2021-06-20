@@ -16,35 +16,42 @@ protected:
     ~Sampler() {}
 };
 
-/// Random number generator compatible with the standard library.
+/// PCG-based random number generator (see http://www.pcg-random.org), compatible with the standard library.
 struct PcgGenerator {
     using result_type = uint32_t;
     static constexpr uint32_t min() { return std::numeric_limits<uint32_t>::min(); }
     static constexpr uint32_t max() { return std::numeric_limits<uint32_t>::max(); }
 
-    static constexpr uint32_t inc = 1;
+    PcgGenerator(uint64_t init_state, uint64_t seq) {
+        state = 0;
+        inc = (seq << 1) | 1;
+        (*this)();
+        state += init_state;
+        (*this)();
+    }
 
     PcgGenerator(uint64_t seed)
-        : state(seed)
+        : PcgGenerator(seed, 0)
     {}
 
     uint32_t operator () () {
         auto old_state = state;
-        state = old_state * 6364136223846793005ULL + inc;
-        uint32_t xorshifted = ((old_state >> 18u) ^ old_state) >> 27u;
-        uint32_t rot = old_state >> 59u;
-        return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+        state = old_state * UINT64_C(6364136223846793005) + inc;
+        uint32_t xorshifted = ((old_state >> 18) ^ old_state) >> 27;
+        uint32_t rot = old_state >> 59;
+        return (xorshifted >> rot) | (xorshifted << ((-rot) & UINT32_C(31)));
     }
 
-    uint64_t state;
+    uint64_t state, inc;
 };
 
 /// Template to create samplers from a generator compatible with the standard-library.
 template <typename Generator>
 class StdRandomSampler final : public Sampler {
 public:
-    StdRandomSampler(uint64_t seed)
-        : distrib_(0, 1), gen_(seed)
+    template <typename... Args>
+    StdRandomSampler(Args&&... args)
+        : distrib_(0, 1), gen_(std::forward<Args>(args)...)
     {}
 
     float operator () () override final { return distrib_(gen_); }

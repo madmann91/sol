@@ -47,8 +47,8 @@ TriangleLight::TriangleLight(const proto::Trianglef& triangle, const ColorTextur
 
 LightSample TriangleLight::sample_area(Sampler& sampler, const proto::Vec3f& from) const {
     auto [uv, pos] = sample(sampler);
-    auto dir = from - pos;
-    auto cos = proto::dot(dir, normal_) / proto::length(dir);
+    auto dir = proto::normalize(from - pos);
+    auto cos = proto::positive_dot(dir, normal_);
     return make_sample(pos, dir, intensity_.sample_color(uv), inv_area_, proto::cosine_hemisphere_pdf(cos), cos);
 }
 
@@ -60,9 +60,9 @@ LightSample TriangleLight::sample_emission(Sampler& sampler) const {
 }
 
 EmissionValue TriangleLight::emission(const proto::Vec3f& dir, const proto::Vec2f& uv) const {
-    auto cos = proto::cosine_hemisphere_pdf(proto::dot(dir, triangle_.normal()));
-    return cos > 0
-        ? EmissionValue { intensity_.sample_color(uv), inv_area_, cos }
+    auto pdf_dir = proto::cosine_hemisphere_pdf(proto::dot(dir, triangle_.normal()));
+    return pdf_dir > 0
+        ? EmissionValue { intensity_.sample_color(uv), inv_area_, pdf_dir }
         : EmissionValue { Color::black(), 1.0f, 1.0f };
 }
 

@@ -119,7 +119,6 @@ bool save(const Image& image, const std::string_view& path) {
 
     png_write_end(png_ptr, info_ptr);
     png_destroy_write_struct(&png_ptr, &info_ptr);
-
     return true;
 }
 #else
