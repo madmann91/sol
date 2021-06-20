@@ -88,8 +88,8 @@ protected:
         const Color& color,
         const SurfaceInfo& surf_info)
     {
-        auto below_surface = proto::dot(in_dir, surf_info.face_normal) < 0;
-        return pdf > 0 && (below_surface == ExpectBelowSurface)
+        bool is_below_surface = proto::dot(in_dir, surf_info.face_normal) < 0;
+        return pdf > 0 && (is_below_surface == ExpectBelowSurface)
             ? BsdfSample { in_dir, pdf, cos, color }
             : BsdfSample { in_dir, 1.0f, 1.0f, Color::black() };
     }
