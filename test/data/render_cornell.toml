@@ -2,8 +2,8 @@ scene = "cornell_box.toml"
 
 sample_count = 10
 samples_per_frame = 10
-output_width = 512
-output_height = 512
+output_width = 1080
+output_height = 720
 
 [renderer]
 type = "path_tracer"
