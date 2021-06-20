@@ -70,6 +70,17 @@ void RenderJob::cancel() {
     is_done_ = true;
 }
 
+std::optional<RenderJob> RenderJob::load(const std::string& file_name, const Defaults& defaults, std::ostream* err_out) {
+    try {
+        return std::make_optional(load_and_throw_on_error(file_name, defaults));
+    } catch (toml::parse_error& error) {
+        if (err_out) (*err_out) << SourceError::from_toml(error).what();
+    } catch (std::exception& e) {
+        if (err_out) (*err_out) << e.what();
+    }
+    return std::nullopt;
+}
+
 static std::unique_ptr<Renderer> create_renderer(const toml::table& table, const Scene& scene) {
     auto type = table["type"].value_or<std::string>("");
     if (type == "path_tracer") {
@@ -85,15 +96,17 @@ static std::unique_ptr<Renderer> create_renderer(const toml::table& table, const
     throw SourceError::from_toml(table.source(), "Unknown renderer type '" + type + "'");
 }
 
-std::optional<RenderJob> RenderJob::load(const std::string& file_name, const Defaults& defaults, std::ostream* err_out) {
-    try {
-        return std::make_optional(load_and_throw_on_error(file_name, defaults));
-    } catch (toml::parse_error& error) {
-        if (err_out) (*err_out) << SourceError::from_toml(error).what();
-    } catch (std::exception& e) {
-        if (err_out) (*err_out) << e.what();
-    }
-    return std::nullopt;
+static std::unique_ptr<Scene> load_scene(const std::string& file_name, const Image& output) {
+    Scene::Defaults defaults;
+    defaults.aspect_ratio =
+        static_cast<float>(output.width()) /
+        static_cast<float>(output.height());
+
+    auto scene = std::make_unique<Scene>();
+    SceneLoader loader(*scene, defaults, nullptr);
+    loader.load_and_throw_on_error(file_name);
+
+    return scene;
 }
 
 RenderJob RenderJob::load_and_throw_on_error(const std::string& file_name, const Defaults& defaults) {
@@ -114,10 +127,7 @@ RenderJob RenderJob::load_and_throw_on_error(const std::string& file_name, const
     auto output_height = table["output_height"].value_or(defaults.output_height);
     render_job.output = std::make_unique<Image>(output_width, output_height, 3);
 
-    render_job.scene = std::make_unique<Scene>();
-    SceneLoader loader(*render_job.scene, {}, nullptr);
-    loader.load_and_throw_on_error(base_dir + "/" + table["scene"].value_or(""));
-
+    render_job.scene = load_scene(base_dir + "/" + table["scene"].value_or(""), *render_job.output);
     if (auto renderer = table["renderer"].as_table()) {
         render_job.renderer = create_renderer(*renderer, *render_job.scene);
         return render_job;

@@ -109,7 +109,7 @@ private:
     };
 
     Scene& scene_;
-    const Scene::Defaults& defaults_;
+    Scene::Defaults defaults_;
 
     std::unordered_set<const Bsdf*, Hash, Compare>    bsdfs_;
     std::unordered_set<const Light*, Hash, Compare>   lights_;
