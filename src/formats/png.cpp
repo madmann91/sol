@@ -90,13 +90,13 @@ bool save(const Image& image, const std::string_view& path) {
         return false;
     }
 
-    auto channel_count = proto::clamp<size_t>(image.channel_count(), 3, 4);
-    auto row_bytes = std::make_unique<png_byte[]>(image.width() * channel_count);
     if (setjmp(png_jmpbuf(png_ptr))) {
         png_destroy_write_struct(&png_ptr, &info_ptr);
         return false;
     }
 
+    auto channel_count = proto::clamp<size_t>(image.channel_count(), 3, 4);
+    auto row_bytes = std::make_unique<png_byte[]>(image.width() * channel_count);
     png_init_io(png_ptr, file);
 
     png_set_IHDR(
