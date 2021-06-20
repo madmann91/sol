@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <string_view>
+#include <cmath>
 #include <cassert>
 
 #include "sol/color.h"
@@ -80,9 +81,11 @@ public:
     static proto_always_inline float word_to_component(Word<Bits> word) { return word * (1.0f / 255.0f); }
 
     /// Converts a component to an unsigned integer type.
-    template <size_t Bits>
-    static proto_always_inline Word<Bits> component_to_word(float f) {
+    template <size_t Bits, bool PerformGammaCorrect = true>
+    static proto_always_inline Word<Bits> component_to_word(float f, float gamma = RgbColor::default_gamma()) {
         static_assert(sizeof(Word<Bits>) < sizeof(uint32_t));
+        if constexpr (PerformGammaCorrect)
+            f = std::pow(f, 1.0f / gamma);
         return std::min(
             uint32_t{std::numeric_limits<Word<Bits>>::max()},
             static_cast<uint32_t>(std::max(f * (static_cast<float>(std::numeric_limits<Word<Bits>>::max()) + 1.0f), 0.0f)));
