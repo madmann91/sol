@@ -21,7 +21,7 @@ Color DiffuseBsdf::eval(const proto::Vec3f&, const SurfaceInfo& surf_info, const
 BsdfSample DiffuseBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir, bool) const {
     auto [in_dir, pdf] = proto::sample_cosine_hemisphere(sampler(), sampler());
     auto local_in_dir = surf_info.local * in_dir;
-    return BsdfSample { local_in_dir, pdf, in_dir[2], eval(local_in_dir, surf_info, out_dir) };
+    return make_sample(local_in_dir, pdf, in_dir[2], eval(local_in_dir, surf_info, out_dir), surf_info);
 }
 
 float DiffuseBsdf::pdf(const proto::Vec3f& in_dir, const SurfaceInfo& surf_info, const proto::Vec3f&) const {
