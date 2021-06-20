@@ -72,17 +72,18 @@ bool save(const Image& image, const std::string_view& path) {
     exr_header.num_channels = image.channel_count();
     exr_header.channels = channel_infos.data();
 
-    size_t name_len = sizeof(EXRChannelInfo::name);
+    size_t name_len = sizeof(EXRChannelInfo::name) - 1;
     for (size_t i = 0; i < image.channel_count(); ++i) {
         auto channel_name = "Channel_" + std::to_string(i);
-        std::strncpy(exr_header.channels[i].name, channel_name.c_str(), name_len);
+        // Note: That syntax here makes sure that the name is a proper C-string
+        std::strncpy(exr_header.channels[i].name, channel_name.c_str(), name_len)[name_len] = 0;
     }
     if (image.channel_count() >= 3) {
         if (image.channel_count() >= 4)
-            std::strncpy(exr_header.channels[3].name, "A", name_len);
-        std::strncpy(exr_header.channels[2].name, "R", name_len);
-        std::strncpy(exr_header.channels[1].name, "G", name_len);
-        std::strncpy(exr_header.channels[0].name, "B", name_len);
+            std::strncpy(exr_header.channels[3].name, "A", name_len)[name_len] = 0;
+        std::strncpy(exr_header.channels[2].name, "R", name_len)[name_len] = 0;
+        std::strncpy(exr_header.channels[1].name, "G", name_len)[name_len] = 0;
+        std::strncpy(exr_header.channels[0].name, "B", name_len)[name_len] = 0;
     }
 
     std::vector<int> pixel_types(image.channel_count(), TINYEXR_PIXELTYPE_FLOAT);
