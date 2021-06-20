@@ -16,8 +16,10 @@ void Image::clear(float value) {
 }
 
 void Image::scale(float value) {
-    for (auto& channel : channels_)
-        std::transform(channel.get(), channel.get() + width_ * height_, channel.get(), [&] (float x) { return x * value; });
+    for (auto& channel : channels_) {
+        std::transform(channel.get(), channel.get() + width_ * height_, channel.get(),
+            [&] (float x) { return x * value; });
+    }
 }
 
 bool Image::save(const std::string_view& path, Format format) const {
