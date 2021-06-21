@@ -21,18 +21,18 @@ struct PcgGenerator {
     using result_type = uint32_t;
     static constexpr uint32_t min() { return std::numeric_limits<uint32_t>::min(); }
     static constexpr uint32_t max() { return std::numeric_limits<uint32_t>::max(); }
+    static constexpr uint64_t inc = 1;
 
-    PcgGenerator(uint64_t init_state, uint64_t seq) {
+    PcgGenerator(uint64_t init_state) {
+        seed(init_state);
+    }
+
+    void seed(uint64_t init_state) {
         state = 0;
-        inc = (seq << 1) | 1;
         (*this)();
         state += init_state;
         (*this)();
     }
-
-    PcgGenerator(uint64_t seed)
-        : PcgGenerator(seed, 0)
-    {}
 
     uint32_t operator () () {
         auto old_state = state;
@@ -42,7 +42,7 @@ struct PcgGenerator {
         return (xorshifted >> rot) | (xorshifted << ((-rot) & UINT32_C(31)));
     }
 
-    uint64_t state, inc;
+    uint64_t state;
 };
 
 /// Template to create samplers from a generator compatible with the standard-library.
