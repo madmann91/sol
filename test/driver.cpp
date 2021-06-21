@@ -2,6 +2,7 @@
 #include <optional>
 #include <iostream>
 #include <sstream>
+#include <chrono>
 
 #include <sol/scene.h>
 #include <sol/render_job.h>
@@ -111,8 +112,13 @@ int main(int argc, char** argv) {
         << "    " << render_job->scene->textures.size() << " texture(s)\n"
         << "    " << render_job->scene->images.size() << " image(s)\n";
 
+    auto render_start = std::chrono::system_clock::now();
     render_job->start();
+    std::cout << "Rendering started..." << std::endl;
     render_job->wait();
+    auto render_end = std::chrono::system_clock::now();
+    auto rendering_ms = std::chrono::duration_cast<std::chrono::milliseconds>(render_end - render_start).count();
+    std::cout << "Rendering finished in " << rendering_ms << "ms" << std::endl;
 
     if (!options->out_file.empty()) {
         render_job->output->scale(1.0f / static_cast<float>(render_job->sample_count));
