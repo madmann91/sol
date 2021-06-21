@@ -91,6 +91,8 @@ static std::unique_ptr<Renderer> create_renderer(const toml::table& table, const
         config.min_survival_prob = table["min_survival_prob"].value_or(config.min_survival_prob);
         config.ray_offset        = table["ray_offset"].value_or(config.ray_offset);
         config.max_path_len      = table["max_path_len"].value_or(config.max_path_len);
+        config.max_survival_prob = proto::clamp(config.max_survival_prob, 0.0f, 1.0f);
+        config.min_survival_prob = proto::clamp(config.min_survival_prob, 0.0f, config.max_survival_prob);
         return std::make_unique<PathTracer>(scene, config);
     }
     throw SourceError::from_toml(table.source(), "Unknown renderer type '" + type + "'");
