@@ -71,8 +71,15 @@ std::optional<Hit> TriangleMesh::intersect_closest(proto::Rayf& ray) const {
     auto normal     = proto::lerp(normals_[i0], normals_[i1], normals_[i2], u, v);
     auto tex_coords = proto::lerp(tex_coords_[i0], tex_coords_[i1], tex_coords_[i2], u, v);
 
+    // Flip normals based on the side of the triangle
+    bool is_front_side = proto::dot(face_normal, ray.dir) < 0;
+    if (!is_front_side) {
+        face_normal = -face_normal;
+        normal = -normal;
+    }
+
     SurfaceInfo surf_info;
-    surf_info.is_front_side = proto::dot(face_normal, ray.dir) < 0;
+    surf_info.is_front_side = is_front_side;
     surf_info.point         = ray.point_at(ray.tmax);
     surf_info.tex_coords    = tex_coords;
     surf_info.surf_coords   = proto::Vec2f(u, v);
@@ -126,6 +133,7 @@ std::unique_ptr<TriangleMesh::BvhData> TriangleMesh::build_bvh(const std::vector
 }
 
 std::vector<proto::PrecomputedTrianglef> TriangleMesh::build_triangles(const std::vector<proto::Vec3f>& vertices) const {
+    // Build a permuted array of triangles, so as to avoid indirections when intersecting the mesh with a ray.
     auto range = std::views::iota(size_t{0}, triangle_count());
     std::vector<proto::PrecomputedTrianglef> triangles(triangle_count());
     std::for_each(std::execution::par_unseq, range.begin(), range.end(),

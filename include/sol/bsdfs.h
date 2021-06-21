@@ -125,8 +125,6 @@ public:
 
 private:
     static Color eval(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&, const Color&, float);
-    static float reflect_cosine(const proto::Vec3f&, const proto::Vec3f&, const proto::Vec3f&);
-    static float norm_factor(float);
 
     const ColorTexture& ks_;
 	const Texture& ns_;

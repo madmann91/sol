@@ -8,6 +8,16 @@
 
 namespace sol {
 
+static float reflect_cosine(
+    const proto::Vec3f& in_dir,
+    const proto::Vec3f& normal,
+    const proto::Vec3f& out_dir)
+{
+    // The minus sign and negative dot are here because `out_dir`
+    // is going out of the surface by convention.
+    return -proto::negative_dot(in_dir, proto::reflect(out_dir, normal));
+}
+
 // Diffuse BSDF --------------------------------------------------------------------
 
 DiffuseBsdf::DiffuseBsdf(const ColorTexture& kd)
@@ -49,7 +59,7 @@ Color PhongBsdf::eval(const proto::Vec3f& in_dir, const SurfaceInfo& surf_info, 
 BsdfSample PhongBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir, bool) const {
     auto ks = ks_.sample_color(surf_info.tex_coords);
     auto ns = ns_.sample(surf_info.tex_coords);
-    auto basis = proto::ortho_basis(reflect(out_dir, surf_info.normal()));
+    auto basis = proto::ortho_basis(proto::reflect(-out_dir, surf_info.normal()));
     auto [in_dir, pdf] = proto::sample_cosine_power_hemisphere(ns, sampler(), sampler());
     auto local_in_dir = basis * in_dir;
     auto cos = proto::positive_dot(local_in_dir, surf_info.normal());
@@ -57,7 +67,7 @@ BsdfSample PhongBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, con
 }
 
 float PhongBsdf::pdf(const proto::Vec3f& in_dir, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir) const {
-    return proto::cosine_power_hemisphere_pdf(reflect_cosine(in_dir, surf_info.normal(), out_dir), ns_.sample(surf_info.tex_coords));
+    return proto::cosine_power_hemisphere_pdf(ns_.sample(surf_info.tex_coords), reflect_cosine(in_dir, surf_info.normal(), out_dir));
 }
 
 proto::fnv::Hasher& PhongBsdf::hash(proto::fnv::Hasher& hasher) const {
@@ -72,21 +82,7 @@ bool PhongBsdf::equals(const Bsdf& other) const {
 }
 
 Color PhongBsdf::eval(const proto::Vec3f& in_dir, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir, const Color& ks, float ns) {
-    return ks * std::pow(reflect_cosine(in_dir, surf_info.normal(), out_dir), ns) * norm_factor(ns);
-}
-
-float PhongBsdf::reflect_cosine(
-    const proto::Vec3f& in_dir,
-    const proto::Vec3f& normal,
-    const proto::Vec3f& out_dir)
-{
-    // The minus sign and negative dot are here because `out_dir`
-    // is going out of the surface by convention.
-    return -proto::negative_dot(in_dir, proto::reflect(out_dir, normal));
-}
-
-float PhongBsdf::norm_factor(float ns) {
-    return (ns + 2.0f) * (0.5f * std::numbers::inv_pi_v<float>);
+    return ks * std::pow(reflect_cosine(in_dir, surf_info.normal(), out_dir), ns) * (ns + 2.0f) * (0.5f * std::numbers::inv_pi_v<float>);
 }
 
 // Mirror BSDF ---------------------------------------------------------------------
@@ -96,7 +92,7 @@ MirrorBsdf::MirrorBsdf(const ColorTexture& ks)
 {}
 
 BsdfSample MirrorBsdf::sample(Sampler&, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir, bool) const {
-    return make_sample(proto::reflect(out_dir, surf_info.normal()), 1.0f, 1.0f, ks_.sample_color(surf_info.tex_coords), surf_info);
+    return make_sample(proto::reflect(-out_dir, surf_info.normal()), 1.0f, 1.0f, ks_.sample_color(surf_info.tex_coords), surf_info);
 }
 
 proto::fnv::Hasher& MirrorBsdf::hash(proto::fnv::Hasher& hasher) const {
@@ -123,17 +119,16 @@ BsdfSample GlassBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, con
     auto cos2_t = 1.0f - eta * eta * (1.0f - cos_i * cos_i);
     if (cos2_t > 0.0f) {
         auto cos_t = std::sqrt(cos2_t);
-        auto f = fresnel_factor(eta, cos_i, cos_t);
-        if (sampler() > f) {
+        if (sampler() > fresnel_factor(eta, cos_i, cos_t)) {
             // Refraction
-            auto t = (eta * cos_i - cos_t) * surf_info.normal() - eta * out_dir;
+            auto refract_dir = (eta * cos_i - cos_t) * surf_info.normal() - eta * out_dir;
             auto adjoint_fix = is_adjoint ? eta * eta : 1.0f;
-            return make_sample<true>(t, 1.0f, 1.0f, kt_.sample_color(surf_info.tex_coords) * adjoint_fix, surf_info);
+            return make_sample<true>(refract_dir, 1.0f, 1.0f, kt_.sample_color(surf_info.tex_coords) * adjoint_fix, surf_info);
         }
     }
 
     // Reflection
-    return make_sample(proto::reflect(out_dir, surf_info.normal()), 1.0f, 1.0f, ks_.sample_color(surf_info.tex_coords), surf_info);
+    return make_sample(proto::reflect(-out_dir, surf_info.normal()), 1.0f, 1.0f, ks_.sample_color(surf_info.tex_coords), surf_info);
 }
 
 proto::fnv::Hasher& GlassBsdf::hash(proto::fnv::Hasher& hasher) const {
@@ -169,16 +164,16 @@ RgbColor InterpBsdf::eval(const proto::Vec3f& in_dir, const SurfaceInfo& surf_in
         k_.sample(surf_info.tex_coords));
 }
 
-BsdfSample InterpBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir, bool adjoint) const {
+BsdfSample InterpBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir, bool is_adjoint) const {
     auto k = k_.sample(surf_info.tex_coords);
     if (sampler() < k) {
-        auto sample = b_->sample(sampler, surf_info, out_dir, adjoint);
-        sample.pdf   = proto::lerp(a_->pdf (sample.in_dir, surf_info, out_dir), sample.pdf, k);
+        auto sample = b_->sample(sampler, surf_info, out_dir, is_adjoint);
+        sample.pdf   = proto::lerp(a_->pdf(sample.in_dir, surf_info, out_dir), sample.pdf, k);
         sample.color = lerp(a_->eval(sample.in_dir, surf_info, out_dir), sample.color, k);
         return sample;
     } else {
-        auto sample = a_->sample(sampler, surf_info, out_dir, adjoint);
-        sample.pdf   = proto::lerp(sample.pdf, b_->pdf (sample.in_dir, surf_info, out_dir), k);
+        auto sample = a_->sample(sampler, surf_info, out_dir, is_adjoint);
+        sample.pdf   = proto::lerp(sample.pdf, b_->pdf(sample.in_dir, surf_info, out_dir), k);
         sample.color = lerp(sample.color, b_->eval(sample.in_dir, surf_info, out_dir), k);
         return sample;
     }
