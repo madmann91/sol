@@ -1,0 +1,8 @@
+---
+meshes: ["cornell_box_specular.obj"]
+camera: !perspective_camera {
+    eye: [0,  0.75, 2.5],
+    center: [0, 0.75, -100],
+    up: [0, 1, 0],
+    fov: 60.0
+}
