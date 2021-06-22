@@ -110,7 +110,7 @@ public:
 
     float sample(const proto::Vec2f&) const override { return constant_; }
 
-    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const {
+    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const override {
         return hasher.combine(tag).combine(constant_);
     }
 
@@ -131,7 +131,7 @@ public:
 
     Color sample_color(const proto::Vec2f&) const override { return color_; }
 
-    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const {
+    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const override {
         return color_.hash(hasher.combine(tag));
     }
 
@@ -166,7 +166,7 @@ public:
 
     Color sample_color(const proto::Vec2f& uv) const override;
 
-    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const {
+    proto::fnv::Hasher& hash(proto::fnv::Hasher& hasher) const override {
         return hasher.combine(tag).combine(&image_);
     }
 
