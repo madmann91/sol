@@ -1,48 +1,27 @@
 #ifndef SOL_RENDER_JOB_H
 #define SOL_RENDER_JOB_H
 
-#include <memory>
-#include <string>
-#include <optional>
-#include <ostream>
 #include <functional>
 #include <thread>
 #include <condition_variable>
 #include <mutex>
 
-#include "sol/image.h"
-
 namespace sol {
 
+struct Image;
 struct Scene;
 class Renderer;
-
-namespace detail {
-
-struct RenderJobDefaults {
-    size_t output_width = 1080;
-    size_t output_height = 720;
-    size_t sample_count = 100;
-    size_t samples_per_frame = 2;
-};
-
-} // namespace detail
 
 /// A rendering job, with accompanying scene data and renderer.
 /// Rendering jobs should only be controlled from a single thread
 /// (i.e. calling `wait/start/cancel` from different threads is undefined behavior).
 struct RenderJob {
-    using Defaults = detail::RenderJobDefaults;
+    size_t sample_count = 0;        ///< Number of samples to render (0 = unlimited, until cancellation).
+    size_t samples_per_frame = 1;   ///< Number of samples per frame (larger = higher throughput but higher latency)
+    const Renderer& renderer;       ///< Rendering algorithm to use.
+    Image& output;                  ///< Output image, where samples are accumulated.
 
-    size_t sample_count;                ///< Number of samples to render (0 = unlimited, until cancellation).
-    size_t samples_per_frame;           ///< Number of samples per frame (larger = higher throughput but higher latency)
-    std::unique_ptr<Scene> scene;       ///< Scene to render.
-    std::unique_ptr<Image> output;      ///< Output image, where samples are accumulated.
-    std::unique_ptr<Renderer> renderer; ///< Renderer to use.
-
-    /// Creates an empty rendering job.
-    /// The renderer, scene, and output are left uninitialized.
-    RenderJob(const Defaults& = {});
+    RenderJob(const Renderer& renderer, Image& output);
     RenderJob(const RenderJob&) = delete;
     RenderJob(RenderJob&&);
     ~RenderJob();
@@ -62,19 +41,11 @@ struct RenderJob {
     /// This might require waiting for some frames to finish rendering.
     void cancel();
 
-    /// Loads a rendering job from the given configuration file.
-    static std::optional<RenderJob> load(
-        const std::string& file_name,
-        const Defaults& defaults = {},
-        std::ostream* err_out = nullptr);
-
 private:
-    static RenderJob load_and_throw_on_error(const std::string&, const Defaults&);
-
     std::thread render_thread_;
     std::mutex mutex_;
     std::condition_variable done_cond_;
-    bool is_done_;
+    bool is_done_ = true;
 };
 
 } // namespace sol

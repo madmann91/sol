@@ -101,7 +101,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
 
         // Russian Roulette
         auto survival_prob = 1.0f;
-        if (!disable_rr && path_len >= config_.min_russian_roulette_path_len) {
+        if (!disable_rr && path_len >= config_.min_rr_path_len) {
             survival_prob = proto::clamp(
                 throughput.luminance(),
                 config_.min_survival_prob,
