@@ -164,8 +164,20 @@ static std::optional<Options> parse_options(int argc, char** argv) {
 }
 
 static bool save_image(const sol::Image& image, const Options& options) {
-    if (!image.save(options.out_file, options.out_format)) {
-        if (options.out_format != sol::Image::Format::Auto &&
+    auto format = options.out_format;
+    if (format == sol::Image::Format::Auto) {
+        // Try to guess the format from the file extension
+        if (options.out_file.ends_with(".png"))
+            format = sol::Image::Format::Png;
+        if (options.out_file.ends_with(".jpg") || options.out_file.ends_with(".jpeg"))
+            format = sol::Image::Format::Jpeg;
+        if (options.out_file.ends_with(".tiff"))
+            format = sol::Image::Format::Tiff;
+        if (options.out_file.ends_with(".exr"))
+            format = sol::Image::Format::Exr;
+    }
+    if (!image.save(options.out_file, format)) {
+        if (format != sol::Image::Format::Auto &&
             image.save(options.out_file, sol::Image::Format::Auto)) {
             std::cout << "Image could not be saved in the given format, so the default format was used instead" << std::endl;
             return true;
