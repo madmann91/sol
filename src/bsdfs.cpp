@@ -63,7 +63,7 @@ BsdfSample PhongBsdf::sample(Sampler& sampler, const SurfaceInfo& surf_info, con
     auto [in_dir, pdf] = proto::sample_cosine_power_hemisphere(ns, sampler(), sampler());
     auto local_in_dir = basis * in_dir;
     auto cos = proto::positive_dot(local_in_dir, surf_info.normal());
-    return BsdfSample { local_in_dir, pdf, cos, eval(local_in_dir, surf_info, out_dir, ks, ns) };
+    return make_sample(local_in_dir, pdf, cos, eval(local_in_dir, surf_info, out_dir, ks, ns), surf_info);
 }
 
 float PhongBsdf::pdf(const proto::Vec3f& in_dir, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir) const {
