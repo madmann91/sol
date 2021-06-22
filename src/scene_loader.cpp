@@ -2,7 +2,6 @@
 #include <system_error>
 
 #include "scene_loader.h"
-#include "toml_parser.h"
 #include "formats/obj.h"
 
 #include "sol/cameras.h"
@@ -11,6 +10,16 @@
 #include "sol/image.h"
 
 namespace sol {
+
+static proto::Vec3f parse_vec3(toml::node_view<const toml::node> node, const proto::Vec3f& default_val) {
+    if (auto array = node.as_array(); array) {
+        return proto::Vec3f(
+            (*array)[0].value_or(default_val[0]),
+            (*array)[1].value_or(default_val[1]),
+            (*array)[2].value_or(default_val[2]));
+    }
+    return default_val;
+}
 
 SceneLoader::SceneLoader(Scene& scene, const Scene::Defaults& defaults, std::ostream* err_out)
     : scene_(scene), defaults_(defaults), err_out_(err_out)
@@ -75,9 +84,9 @@ void SceneLoader::insert_node(const std::string& name, std::unique_ptr<Scene::No
 std::unique_ptr<Camera> SceneLoader::create_camera(const toml::table& table) {
     auto type = table["type"].value_or<std::string>("");
     if (type == "perspective") {
-        auto eye = TomlParser::parse_vec3(table["eye"], defaults_.eye_pos);
-        auto dir = TomlParser::parse_vec3(table["dir"], defaults_.dir_vector);
-        auto up  = TomlParser::parse_vec3(table["up"], defaults_.up_vector);
+        auto eye = parse_vec3(table["eye"], defaults_.eye_pos);
+        auto dir = parse_vec3(table["dir"], defaults_.dir_vector);
+        auto up  = parse_vec3(table["up"], defaults_.up_vector);
         auto fov = table["fov"].value_or(defaults_.fov);
         auto ratio = table["aspect"].value_or(defaults_.aspect_ratio);
         return std::make_unique<PerspectiveCamera>(eye, dir, up, fov, ratio);

@@ -5,7 +5,6 @@ add_library(sol
     formats/exr.cpp
     formats/obj.cpp
     algorithms/path_tracer.cpp
-    toml_parser.cpp
     triangle_mesh.cpp
     image.cpp
     cameras.cpp
