@@ -13,6 +13,7 @@ add_library(sol
     bsdfs.cpp
     scene.cpp
     scene_loader.cpp
+    textures.cpp
     render_job.cpp)
 
 set_target_properties(sol PROPERTIES
