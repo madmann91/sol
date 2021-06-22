@@ -393,13 +393,13 @@ static const Bsdf* convert_material(SceneLoader& scene_loader, const Material& m
                 auto ks = get_color_texture(scene_loader, material.map_ks, material.ks, is_strict);
                 auto ns = get_texture(scene_loader, material.map_ns, material.ns, is_strict);
                 spec = scene_loader.get_or_insert_bsdf<PhongBsdf>(*ks, *ns);
-                spec_k = material.map_ks != "" ? 1.0f : material.ks.max_component();
+                spec_k = material.map_ks != "" ? 1.0f : material.ks.luminance();
             }
 
             if (material.kd != RgbColor::black() || material.map_kd != "") {
                 auto kd = get_color_texture(scene_loader, material.map_kd, material.kd, is_strict);
                 diff = scene_loader.get_or_insert_bsdf<DiffuseBsdf>(*kd);
-                diff_k = material.map_kd != "" ? 1.0f : material.kd.max_component();
+                diff_k = material.map_kd != "" ? 1.0f : material.kd.luminance();
             }
 
             if (spec && diff) {
