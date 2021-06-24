@@ -36,7 +36,7 @@ TriangleMesh::TriangleMesh(
     std::vector<proto::Vec3f>&& normals,
     std::vector<proto::Vec2f>&& tex_coords,
     std::vector<const Bsdf*>&& bsdfs,
-    std::unordered_map<size_t, const TriangleLight*>&& lights)
+    std::unordered_map<size_t, const Light*>&& lights)
     : indices_(std::move(indices))
     , normals_(std::move(normals))
     , tex_coords_(std::move(tex_coords))

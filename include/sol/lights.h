@@ -1,9 +1,12 @@
 #ifndef SOL_LIGHTS_H
 #define SOL_LIGHTS_H
 
+#include <tuple>
+
 #include <proto/vec.h>
-#include <proto/triangle.h>
 #include <proto/hash.h>
+#include <proto/triangle.h>
+#include <proto/sphere.h>
 
 #include "sol/color.h"
 
@@ -33,7 +36,7 @@ class Light {
 public:
     const enum class Tag {
         PointLight,
-        TriangleLight
+        AreaLight
     } tag;
 
     Light(Tag tag)
@@ -89,10 +92,13 @@ private:
     Color intensity_;
 };
 
-/// A light in the shape of a triangle.
-class TriangleLight final : public Light {
+/// An area light in the shape of an object given as parameter.
+/// The light emission profile is diffuse (i.e. follows the cosine
+/// between the normal of the light surface and the emission direction).
+template <typename Shape>
+class AreaLight final : public Light {
 public:
-    TriangleLight(const proto::Trianglef&, const ColorTexture&);
+    AreaLight(const Shape&, const ColorTexture&);
 
     LightSample sample_area(Sampler&, const proto::Vec3f&) const override;
     LightSample sample_emission(Sampler&) const override;
@@ -104,13 +110,15 @@ public:
     bool equals(const Light&) const override;
 
 private:
-    std::pair<proto::Vec2f, proto::Vec3f> sample(Sampler&) const;
+    std::tuple<proto::Vec2f, proto::Vec3f, proto::Vec3f> sample(Sampler&) const;
 
-    proto::Trianglef triangle_;
+    Shape shape_;
     const ColorTexture& intensity_;
-    proto::Vec3f normal_;
     float inv_area_;
 };
+
+using TriangleLight = AreaLight<proto::Trianglef>;
+using SphereLight   = AreaLight<proto::Spheref>;
 
 } // namespace sol
 

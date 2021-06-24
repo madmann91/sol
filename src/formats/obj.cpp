@@ -436,7 +436,7 @@ static std::unique_ptr<Scene::Node> build_mesh(
     std::vector<proto::Vec2f> tex_coords;
     std::vector<const Bsdf*> bsdfs;
     std::vector<size_t> normals_to_fix;
-    std::unordered_map<size_t, const TriangleLight*> lights;
+    std::unordered_map<size_t, const Light*> lights;
 
     vertices.reserve(file.vertices.size());
     normals.reserve(file.normals.size());

@@ -10,7 +10,7 @@
 
 namespace sol {
 
-class TriangleLight;
+class Light;
 
 /// Triangle mesh with an underlying acceleration data structure to speed up intersection tests.
 class TriangleMesh : public Scene::Node {
@@ -21,7 +21,7 @@ public:
         std::vector<proto::Vec3f>&& normals,
         std::vector<proto::Vec2f>&& tex_coords,
         std::vector<const Bsdf*>&& bsdfs,
-        std::unordered_map<size_t, const TriangleLight*>&& lights);
+        std::unordered_map<size_t, const Light*>&& lights);
     ~TriangleMesh();
 
     std::optional<Hit> intersect_closest(proto::Rayf&) const override;
@@ -53,7 +53,7 @@ private:
     std::vector<proto::Vec3f> normals_;
     std::vector<proto::Vec2f> tex_coords_;
     std::vector<const Bsdf*> bsdfs_;
-    std::unordered_map<size_t, const TriangleLight*> lights_;
+    std::unordered_map<size_t, const Light*> lights_;
     std::unique_ptr<BvhData> bvh_data_;
 };
 
