@@ -92,13 +92,49 @@ private:
     Color intensity_;
 };
 
+/// Mixin for samplable objects.
+template <typename Shape, typename Derived>
+struct SamplableShape {
+    Shape shape;
+
+    SamplableShape(const Shape& shape)
+        : shape(shape)
+    {}
+
+    std::tuple<proto::Vec2f, proto::Vec3f, proto::Vec3f> sample(Sampler&) const;
+    float area() const { return shape.area(); }
+    template <typename Hasher>
+    Hasher& hash(Hasher& hasher) const { return shape.hash(hasher); }
+    bool operator == (const Derived& other) const { return shape == other.shape; }
+};
+
+struct SamplableTriangle final : SamplableShape<proto::Trianglef, SamplableTriangle> {
+    proto::Vec3f normal;
+
+    SamplableTriangle(const proto::Trianglef& triangle)
+        : SamplableShape(triangle), normal(triangle.normal())
+    {}
+
+    using SamplableShape<proto::Trianglef, SamplableTriangle>::sample;
+    std::pair<proto::Vec3f, proto::Vec3f> sample_at(proto::Vec2f) const;
+};
+
+struct SamplableSphere final : SamplableShape<proto::Spheref, SamplableSphere> {
+    SamplableSphere(const proto::Spheref& sphere)
+        : SamplableShape(sphere)
+    {}
+
+    using SamplableShape<proto::Spheref, SamplableSphere>::sample;
+    std::pair<proto::Vec3f, proto::Vec3f> sample_at(const proto::Vec2f&) const;
+};
+
 /// An area light in the shape of an object given as parameter.
 /// The light emission profile is diffuse (i.e. follows the cosine
 /// between the normal of the light surface and the emission direction).
-template <typename Shape>
+template <typename SamplableShape>
 class AreaLight final : public Light {
 public:
-    AreaLight(const Shape&, const ColorTexture&);
+    AreaLight(const SamplableShape&, const ColorTexture&);
 
     LightSample sample_area(Sampler&, const proto::Vec3f&) const override;
     LightSample sample_emission(Sampler&) const override;
@@ -110,15 +146,13 @@ public:
     bool equals(const Light&) const override;
 
 private:
-    std::tuple<proto::Vec2f, proto::Vec3f, proto::Vec3f> sample(Sampler&) const;
-
-    Shape shape_;
+    SamplableShape shape_;
     const ColorTexture& intensity_;
     float inv_area_;
 };
 
-using TriangleLight = AreaLight<proto::Trianglef>;
-using SphereLight   = AreaLight<proto::Spheref>;
+using TriangleLight = AreaLight<SamplableTriangle>;
+using SphereLight   = AreaLight<SamplableSphere>;
 
 } // namespace sol
 

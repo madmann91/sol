@@ -36,7 +36,28 @@ bool PointLight::equals(const Light& other) const {
         static_cast<const PointLight&>(other).intensity_ == intensity_;
 }
 
-// Triangle Light ---------------------------------------------------------------------
+// Shapes --------------------------------------------------------------------------
+
+template <typename Shape, typename Derived>
+std::tuple<proto::Vec2f, proto::Vec3f, proto::Vec3f> SamplableShape<Shape, Derived>::sample(Sampler& sampler) const {
+    auto uv = proto::Vec2f(sampler(), sampler());
+    auto [pos, normal] = static_cast<const Derived*>(this)->sample_at(uv);
+    return std::tuple { uv, pos, normal };
+}
+
+std::pair<proto::Vec3f, proto::Vec3f> SamplableTriangle::sample_at(proto::Vec2f uv) const {
+    if (uv[0] + uv[1] > 1)
+        uv = proto::Vec2f(1) - uv;
+    auto pos = proto::lerp(shape.v0, shape.v1, shape.v2, uv[0], uv[1]);
+    return std::pair { pos, normal };
+}
+
+std::pair<proto::Vec3f, proto::Vec3f> SamplableSphere::sample_at(const proto::Vec2f& uv) const {
+    auto dir = std::get<0>(proto::sample_uniform_sphere(uv[0], uv[1]));
+    return std::pair { shape.center + dir * shape.radius, dir };
+}
+
+// Area Light ----------------------------------------------------------------------
 
 template <typename Shape>
 AreaLight<Shape>::AreaLight(const Shape& shape, const ColorTexture& intensity)
@@ -47,7 +68,7 @@ AreaLight<Shape>::AreaLight(const Shape& shape, const ColorTexture& intensity)
 
 template <typename Shape>
 LightSample AreaLight<Shape>::sample_area(Sampler& sampler, const proto::Vec3f& from) const {
-    auto [uv, pos, normal] = sample(sampler);
+    auto [uv, pos, normal] = shape_.sample(sampler);
     auto dir = proto::normalize(from - pos);
     auto cos = proto::positive_dot(dir, normal);
     return make_sample(pos, dir, intensity_.sample_color(uv), inv_area_, proto::cosine_hemisphere_pdf(cos), cos);
@@ -55,7 +76,7 @@ LightSample AreaLight<Shape>::sample_area(Sampler& sampler, const proto::Vec3f& 
 
 template <typename Shape>
 LightSample AreaLight<Shape>::sample_emission(Sampler& sampler) const {
-    auto [uv, pos, normal] = sample(sampler);
+    auto [uv, pos, normal] = shape_.sample(sampler);
     auto local = proto::ortho_basis(normal);
     auto [dir, pdf_dir] = proto::sample_cosine_hemisphere(sampler(), sampler());
     return make_sample(pos, local * dir, intensity_.sample_color(uv), inv_area_, pdf_dir, proto::dot(dir, local.col(2)));
@@ -63,7 +84,7 @@ LightSample AreaLight<Shape>::sample_emission(Sampler& sampler) const {
 
 template <typename Shape>
 EmissionValue AreaLight<Shape>::emission(const proto::Vec3f& dir, const proto::Vec2f& uv) const {
-    auto pdf_dir = proto::cosine_hemisphere_pdf(proto::dot(dir, std::get<1>(shape_.sample(uv[0], uv[1]))));
+    auto pdf_dir = proto::cosine_hemisphere_pdf(proto::dot(dir, shape_.sample_at(uv).second));
     return pdf_dir > 0
         ? EmissionValue { intensity_.sample_color(uv), inv_area_, pdf_dir }
         : EmissionValue { Color::black(), 1.0f, 1.0f };
@@ -82,14 +103,7 @@ bool AreaLight<Shape>::equals(const Light& other) const {
         &static_cast<const AreaLight&>(other).intensity_ == &intensity_;
 }
 
-template <typename Shape>
-std::tuple<proto::Vec2f, proto::Vec3f, proto::Vec3f> AreaLight<Shape>::sample(Sampler& sampler) const {
-    auto uv = proto::Vec2f(sampler(), sampler());
-    auto [pos, normal] = shape_.sample(uv[0], uv[1]);
-    return std::tuple { uv, pos, normal };
-}
-
-template class AreaLight<proto::Trianglef>;
-template class AreaLight<proto::Spheref>;
+template class AreaLight<SamplableTriangle>;
+template class AreaLight<SamplableSphere>;
 
 } // namespace sol
