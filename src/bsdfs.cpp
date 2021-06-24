@@ -179,7 +179,7 @@ bool GlassBsdf::equals(const Bsdf& other) const {
 // Interpolation BSDF --------------------------------------------------------------
 
 InterpBsdf::InterpBsdf(const Bsdf* a, const Bsdf* b, const Texture& k)
-    : Bsdf(Tag::InterpBsdf, guess_type(a->type, b->type)), a_(a), b_(b), k_(k)
+    : Bsdf(Tag::InterpBsdf, infer_type(a->type, b->type)), a_(a), b_(b), k_(k)
 {}
 
 RgbColor InterpBsdf::eval(const proto::Vec3f& in_dir, const SurfaceInfo& surf_info, const proto::Vec3f& out_dir) const {
@@ -223,7 +223,7 @@ bool InterpBsdf::equals(const Bsdf& other) const {
         &static_cast<const InterpBsdf&>(other).k_ == &k_;
 }
 
-Bsdf::Type InterpBsdf::guess_type(Type a, Type b) {
+Bsdf::Type InterpBsdf::infer_type(Type a, Type b) {
     if (a == Type::Diffuse || b == Type::Diffuse) return Type::Diffuse;
     if (a == Type::Glossy  || b == Type::Glossy ) return Type::Glossy;
     return Type::Specular;

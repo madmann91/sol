@@ -48,7 +48,8 @@ class Light {
 public:
     const enum class Tag {
         PointLight,
-        AreaLight
+        UniformTriangleLight,
+        UniformSphereLight
     } tag;
 
     Light(Tag tag)
@@ -126,6 +127,9 @@ public:
     bool equals(const Light&) const override;
 
 private:
+    static Tag infer_tag(const UniformTriangle&) { return Tag::UniformTriangleLight; }
+    static Tag infer_tag(const UniformSphere&)   { return Tag::UniformSphereLight;   }
+
     SamplableShape shape_;
     const ColorTexture& intensity_;
 };

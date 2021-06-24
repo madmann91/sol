@@ -173,7 +173,7 @@ public:
     bool equals(const Bsdf&) const override;
 
 private:
-    static Type guess_type(Type, Type);
+    static Type infer_type(Type, Type);
 
     const Bsdf* a_;
     const Bsdf* b_;

@@ -58,7 +58,7 @@ bool PointLight::equals(const Light& other) const {
 
 template <typename Shape>
 AreaLight<Shape>::AreaLight(const Shape& shape, const ColorTexture& intensity)
-    : Light(Tag::AreaLight), shape_(shape), intensity_(intensity)
+    : Light(infer_tag(shape)), shape_(shape), intensity_(intensity)
 {}
 
 template <typename Shape>

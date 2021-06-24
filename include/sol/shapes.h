@@ -22,7 +22,7 @@ struct DirectionalShapeSample final : ShapeSample {
     /// Sampling probability when sampling the area of the shape from the surface point (in _area_ measure).
     float pdf_from;
 
-    DirectionalShapeSample(const ShapeSample& other)
+    explicit DirectionalShapeSample(const ShapeSample& other)
         : ShapeSample(other), pdf_from(other.pdf)
     {}
 };

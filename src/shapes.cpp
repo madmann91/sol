@@ -15,6 +15,8 @@ DirectionalShapeSample SamplableShape<Shape, Derived>::sample(Sampler& sampler, 
     return static_cast<const Derived*>(this)->sample_at(uv, from);
 }
 
+// Uniform Triangle ----------------------------------------------------------------
+
 ShapeSample UniformTriangle::sample_at(proto::Vec2f uv) const {
     if (uv[0] + uv[1] > 1)
         uv = proto::Vec2f(1) - uv;
@@ -23,8 +25,10 @@ ShapeSample UniformTriangle::sample_at(proto::Vec2f uv) const {
 }
 
 DirectionalShapeSample UniformTriangle::sample_at(const proto::Vec2f& uv, const proto::Vec3f&) const {
-    return sample_at(uv);
+    return DirectionalShapeSample(sample_at(uv));
 }
+
+// Uniform Sphere ------------------------------------------------------------------
 
 ShapeSample UniformSphere::sample_at(const proto::Vec2f& uv) const {
     auto dir = std::get<0>(proto::sample_uniform_sphere(uv[0], uv[1]));
@@ -33,7 +37,7 @@ ShapeSample UniformSphere::sample_at(const proto::Vec2f& uv) const {
 }
 
 DirectionalShapeSample UniformSphere::sample_at(const proto::Vec2f& uv, const proto::Vec3f&) const {
-    return sample_at(uv);
+    return DirectionalShapeSample(sample_at(uv));
 }
 
 template struct SamplableShape<proto::Trianglef, UniformTriangle>;
