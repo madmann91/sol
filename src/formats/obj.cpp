@@ -168,7 +168,7 @@ static File parse_obj(std::istream& is, const std::string& file_name, bool is_st
     // Add dummy elements to account for the fact that indices start at 1 in the file.
     file.objects.emplace_back();
     file.objects[0].groups.emplace_back();
-    file.materials.emplace_back("dummy");
+    file.materials.emplace_back("#dummy");
     file.vertices.emplace_back(0);
     file.normals.emplace_back(0);
     file.tex_coords.emplace_back(0);
@@ -265,7 +265,7 @@ static void parse_mtl(std::istream& stream, const std::string& file_name, Materi
     char line[max_line_len];
     size_t line_count = 0;
 
-    auto* material = &material_lib["dummy"];
+    auto* material = &material_lib["#dummy"];
     while (stream.getline(line, max_line_len)) {
         line_count++;
         char* ptr = strip_spaces(line);
@@ -416,7 +416,7 @@ static void check_materials(File& file, const MaterialLib& material_lib, bool is
         if (!material_lib.contains(material)) {
             if (is_strict)
                 throw std::runtime_error("Cannot find material named '" + material + "'");
-            material = "dummy";
+            material = "#dummy";
         }
     }
 }
@@ -461,7 +461,8 @@ static std::unique_ptr<Scene::Node> build_mesh(
                 }
 
                 // Get a BSDF for the face
-                auto& material = material_lib.at(file.materials[face.material]);
+                assert(material_lib.contains(file.materials[face.material]));
+                auto& material = material_lib.find(file.materials[face.material])->second;
                 auto bsdf = convert_material(scene_loader, material, is_strict);
                 bool is_emissive = material.ke != Color::black() || material.map_ke != "";
 
@@ -519,6 +520,8 @@ std::unique_ptr<Scene::Node> load(SceneLoader& scene_loader, const std::string_v
 
     auto file = parse_obj(std::string(file_name), is_strict);
     MaterialLib material_lib;
+    material_lib.emplace("#dummy", Material {});
+
     for (auto& mtl_file : file.mtl_files) {
         std::error_code err_code;
         auto full_path = std::filesystem::absolute(file_name, err_code).parent_path().string() + "/" + mtl_file;
