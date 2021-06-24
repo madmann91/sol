@@ -9,16 +9,22 @@ namespace sol {
 
 class Sampler;
 
-/// Sample returned by shapes.
+/// Shape surface sample.
 struct ShapeSample {
     proto::Vec2f surf_coords; ///< Surface coordinates of the sample on the surface.
     proto::Vec3f pos;         ///< World position of the sample.
     proto::Vec3f normal;      ///< Surface normal at the sample position on the surface.
     float pdf;                ///< Sampling probability when sampling the area of the shape (in _area_ measure).
+};
 
-    /// Sampling probability when sampling the area of the shape from the given point (in _area_ measure).
-    /// This value only makes sense if the sample was obtained from a point on another surface.
+/// A shape sample obtained by sampling a shape from a point on another surface.
+struct DirectionalShapeSample final : ShapeSample {
+    /// Sampling probability when sampling the area of the shape from the surface point (in _area_ measure).
     float pdf_from;
+
+    DirectionalShapeSample(const ShapeSample& other)
+        : ShapeSample(other), pdf_from(other.pdf)
+    {}
 };
 
 /// Mixin for all samplable shapes.
@@ -32,7 +38,7 @@ struct SamplableShape {
 
     /// Samples the surface of the shape from a given point on another surface.
     ShapeSample sample(Sampler& sampler) const;
-    ShapeSample sample(Sampler& sampler, const proto::Vec3f&) const;
+    DirectionalShapeSample sample(Sampler& sampler, const proto::Vec3f&) const;
 
     template <typename Hasher>
     Hasher& hash(Hasher& hasher) const { return shape.hash(hasher); }
@@ -50,7 +56,7 @@ struct UniformTriangle final : SamplableShape<proto::Trianglef, UniformTriangle>
 
     using SamplableShape<proto::Trianglef, UniformTriangle>::sample;
     ShapeSample sample_at(proto::Vec2f) const;
-    ShapeSample sample_at(const proto::Vec2f&, const proto::Vec3f&) const;
+    DirectionalShapeSample sample_at(const proto::Vec2f&, const proto::Vec3f&) const;
 };
 
 /// A uniformly-sampled sphere.
@@ -63,7 +69,7 @@ struct UniformSphere final : SamplableShape<proto::Spheref, UniformSphere> {
 
     using SamplableShape<proto::Spheref, UniformSphere>::sample;
     ShapeSample sample_at(const proto::Vec2f&) const;
-    ShapeSample sample_at(const proto::Vec2f&, const proto::Vec3f&) const;
+    DirectionalShapeSample sample_at(const proto::Vec2f&, const proto::Vec3f&) const;
 };
 
 } // namespace sol
