@@ -1,6 +1,8 @@
 #ifndef SOL_BSDFS_H
 #define SOL_BSDFS_H
 
+#include <optional>
+
 #include <proto/vec.h>
 #include <proto/mat.h>
 #include <proto/hash.h>
@@ -56,13 +58,16 @@ public:
     }
 
     /// Samples the material given a surface point and an outgoing direction.
-    virtual BsdfSample sample(
+    /// This may fail to return a sample, for instance if random sampling generated an
+    /// incorrect direction, or if the surface configuration makes it impossible to generate
+    /// a proper direction.
+    virtual std::optional<BsdfSample> sample(
         [[maybe_unused]] Sampler& sampler,
         [[maybe_unused]] const SurfaceInfo& surf_info,
         [[maybe_unused]] const proto::Vec3f& out_dir,
         [[maybe_unused]] bool is_adjoint = false) const
     {
-        return BsdfSample { surf_info.face_normal, 1.0f, 1.0f, Color::black() };
+        return std::nullopt;
     }
 
     /// Returns the probability to sample the given input direction (sampled using the sample function).
@@ -78,20 +83,14 @@ public:
     virtual bool equals(const Bsdf&) const = 0;
 
 protected:
-    /// Utility function to create a `BsdfSample`.
-    /// It prevents corner cases that will cause issues (zero pdf, direction parallel/under the surface).
-    /// When `ExpectBelowSurface` is true, it expects the direction to be under the surface, otherwise above.
+    // Utility function to check the validity of a `BsdfSample`.
+    // It prevents corner cases that will cause issues (zero pdf, direction parallel/under the surface).
+    // When `ExpectBelowSurface` is true, it expects the direction to be under the surface, otherwise above.
     template <bool ExpectBelowSurface = false>
-    static BsdfSample make_sample(
-        const proto::Vec3f& in_dir,
-        float pdf, float cos,
-        const Color& color,
-        const SurfaceInfo& surf_info)
-    {
-        bool is_below_surface = proto::dot(in_dir, surf_info.face_normal) < 0;
-        return pdf > 0 && (is_below_surface == ExpectBelowSurface)
-            ? BsdfSample { in_dir, pdf, cos, color }
-            : BsdfSample { in_dir, 1.0f, 1.0f, Color::black() };
+    static std::optional<BsdfSample> validate_sample(const SurfaceInfo& surf_info, const BsdfSample& bsdf_sample) {
+        bool is_below_surface = proto::dot(bsdf_sample.in_dir, surf_info.face_normal) < 0;
+        return bsdf_sample.pdf > 0 && (is_below_surface == ExpectBelowSurface)
+            ? std::make_optional(bsdf_sample) : std::nullopt;
     }
 };
 
@@ -100,8 +99,8 @@ class DiffuseBsdf final : public Bsdf {
 public:
     DiffuseBsdf(const ColorTexture&);
 
+    std::optional<BsdfSample> sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     Color eval(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
-    BsdfSample sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     float pdf(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
 
     proto::fnv::Hasher& hash(proto::fnv::Hasher&) const override;
@@ -116,8 +115,8 @@ class PhongBsdf final : public Bsdf {
 public:
     PhongBsdf(const ColorTexture&, const Texture&);
 
+    std::optional<BsdfSample> sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     Color eval(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
-    BsdfSample sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     float pdf(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
 
     proto::fnv::Hasher& hash(proto::fnv::Hasher&) const override;
@@ -135,8 +134,7 @@ class MirrorBsdf final : public Bsdf {
 public:
     MirrorBsdf(const ColorTexture&);
 
-    BsdfSample sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
-
+    std::optional<BsdfSample> sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     proto::fnv::Hasher& hash(proto::fnv::Hasher&) const override;
     bool equals(const Bsdf&) const override;
 
@@ -152,14 +150,11 @@ public:
         const ColorTexture& kt,
         const Texture& eta);
 
-    BsdfSample sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
-
+    std::optional<BsdfSample> sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     proto::fnv::Hasher& hash(proto::fnv::Hasher&) const override;
     bool equals(const Bsdf&) const override;
 
 private:
-    static float fresnel_factor(float, float, float);
-
     const ColorTexture& ks_;
     const ColorTexture& kt_;
     const Texture& eta_;
@@ -170,8 +165,8 @@ class InterpBsdf final : public Bsdf {
 public:
     InterpBsdf(const Bsdf*, const Bsdf*, const Texture&);
 
+    std::optional<BsdfSample> sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     RgbColor eval(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
-    BsdfSample sample(Sampler&, const SurfaceInfo&, const proto::Vec3f&, bool) const override;
     float pdf(const proto::Vec3f&, const SurfaceInfo&, const proto::Vec3f&) const override;
 
     proto::fnv::Hasher& hash(proto::fnv::Hasher&) const override;

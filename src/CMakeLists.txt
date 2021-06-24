@@ -12,6 +12,7 @@ add_library(sol
     bsdfs.cpp
     scene.cpp
     scene_loader.cpp
+    shapes.cpp
     textures.cpp
     render_job.cpp)
 

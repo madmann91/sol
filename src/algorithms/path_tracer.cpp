@@ -54,9 +54,9 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
             auto pdf_prev_bounce_area =
                 pdf_prev_bounce * proto::dot(out_dir, hit->surf_info.normal()) / (ray.tmax * ray.tmax);
 
-            auto emission = hit->light->emission(out_dir, hit->surf_info.surf_coords);
+            auto emission = hit->light->emission(ray.org, out_dir, hit->surf_info.surf_coords);
             auto mis_weight = pdf_prev_bounce != 0.0f ?
-                Renderer::balance_heuristic(pdf_prev_bounce_area, emission.pdf_area * light_pick_prob) : 1.0f;
+                Renderer::balance_heuristic(pdf_prev_bounce_area, emission.pdf_from * light_pick_prob) : 1.0f;
             if constexpr (disable_mis || disable_nee)
                 mis_weight = pdf_prev_bounce != 0 ? 0 : 1;
             color += throughput * emission.intensity * mis_weight;
@@ -69,33 +69,33 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
         bool skip_nee = disable_nee || hit->bsdf->type == Bsdf::Type::Specular;
         if (!skip_nee) {
             auto light = pick_light(sampler, scene_);
-            auto light_sample = light->sample_area(sampler, hit->surf_info.point);
+            if (auto light_sample = light->sample_area(sampler, hit->surf_info.point)) {
+                auto in_dir   = light_sample->pos - hit->surf_info.point;
+                auto cos_surf = proto::dot(in_dir, hit->surf_info.normal());
+                auto shadow_ray = proto::Rayf::between_points(hit->surf_info.point, light_sample->pos, config_.ray_offset);
 
-            auto in_dir   = light_sample.pos - hit->surf_info.point;
-            auto cos_surf = proto::dot(in_dir, hit->surf_info.normal());
-            auto shadow_ray = proto::Rayf::between_points(hit->surf_info.point, light_sample.pos, config_.ray_offset);
+                if (!scene_.intersect_any(shadow_ray)) {
+                    // Normalize the incoming direction
+                    auto inv_light_dist = 1.0f / proto::length(in_dir);
+                    cos_surf *= inv_light_dist;
+                    in_dir   *= inv_light_dist;
 
-            if (cos_surf > 0 && !light_sample.intensity.is_black() && !scene_.intersect_any(shadow_ray)) {
-                // Normalize the incoming direction
-                auto inv_light_dist = 1.0f / proto::length(in_dir);
-                cos_surf *= inv_light_dist;
-                in_dir   *= inv_light_dist;
+                    auto pdf_bounce = light->has_area() ? hit->bsdf->pdf(in_dir, hit->surf_info, out_dir) : 0.0f;
+                    auto pdf_light  = light_sample->pdf_from * light_pick_prob;
+                    auto geom_term  = light_sample->cos * inv_light_dist * inv_light_dist;
 
-                auto pdf_bounce = light->has_area() ? hit->bsdf->pdf(in_dir, hit->surf_info, out_dir) : 0.0f;
-                auto pdf_light  = light_sample.pdf_area * light_pick_prob;
-                auto geom_term  = light_sample.cos * inv_light_dist * inv_light_dist;
+                    auto mis_weight = light->has_area() ?
+                        Renderer::balance_heuristic(pdf_light, pdf_bounce * geom_term) : 1.0f;
 
-                auto mis_weight = light->has_area() ?
-                    Renderer::balance_heuristic(pdf_light, pdf_bounce * geom_term) : 1.0f;
+                    if constexpr (disable_mis)
+                        mis_weight = 1;
 
-                if constexpr (disable_mis)
-                    mis_weight = 1;
-
-                color +=
-                    light_sample.intensity *
-                    throughput *
-                    hit->bsdf->eval(in_dir, hit->surf_info, out_dir) *
-                    (geom_term * cos_surf * mis_weight / pdf_light);
+                    color +=
+                        light_sample->intensity *
+                        throughput *
+                        hit->bsdf->eval(in_dir, hit->surf_info, out_dir) *
+                        (geom_term * cos_surf * mis_weight / pdf_light);
+                }
             }
         }
 
@@ -112,9 +112,12 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
 
         // Bounce
         auto bsdf_sample = hit->bsdf->sample(sampler, hit->surf_info, out_dir);
-        throughput *= bsdf_sample.color * (bsdf_sample.cos / (bsdf_sample.pdf * survival_prob));
-        ray = proto::Rayf(hit->surf_info.point, bsdf_sample.in_dir, config_.ray_offset);
-        pdf_prev_bounce = skip_nee ? 0.0f : bsdf_sample.pdf;
+        if (!bsdf_sample)
+            break;
+
+        throughput *= bsdf_sample->color * (bsdf_sample->cos / (bsdf_sample->pdf * survival_prob));
+        ray = proto::Rayf(hit->surf_info.point, bsdf_sample->in_dir, config_.ray_offset);
+        pdf_prev_bounce = skip_nee ? 0.0f : bsdf_sample->pdf;
     }
     return color;
 }

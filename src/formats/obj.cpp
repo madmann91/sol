@@ -475,8 +475,8 @@ static std::unique_ptr<Scene::Node> build_mesh(
                     if (is_emissive) {
                         proto::Trianglef triangle(vertices[first_index], vertices[cur_index], vertices[next_index]);
                         auto intensity = get_color_texture(scene_loader, material.map_ke, material.ke, is_strict);
-                        auto light = scene_loader.get_or_insert_light<TriangleLight>(triangle, *intensity);
-                        lights.emplace(indices.size() / 3, static_cast<const TriangleLight*>(light));
+                        auto light = scene_loader.get_or_insert_light<UniformTriangleLight>(triangle, *intensity);
+                        lights.emplace(indices.size() / 3, light);
                     }
 
                     indices.push_back(first_index);
