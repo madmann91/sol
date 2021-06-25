@@ -3,16 +3,20 @@
 SoL (for _Speed of Light_, or sun in Spanish) is a small rendering library written in C++20.
 Its goal is to strike a good balance between performance and usability,
 and allow easy experimentation for rendering researchers.
+SoL is provided as a library that can be embedded in other projects.
 
 ## Building
 
-SoL is provided as a library that can be embedded in other projects.
-In order to build it, you will need Git, and CMake.
+The recommended way to build SoL is by cloning the meta-repository [Solar](https://github.com/madmann91/solar),
+which downloads and installs all dependencies automatically.
+
+If you prefer to do this manually, you will need Git, CMake, [proto](https://github.com/madmann91/proto),
+and [bvh](https://github.com/madmann91/bvh) (`v2` branch).
 First, make sure you have downloaded all the submodules, by running:
 
     git submodule update --init --recursive
 
-Once all submodules have been downloaded, just type:
+Once all submodules have been downloaded and the dependencies have been downloaded and installed, type:
 
     mkdir build
     cd build
