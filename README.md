@@ -12,7 +12,10 @@ which downloads and installs all dependencies automatically.
 
 If you prefer to do this manually, you will need Git, CMake, [proto](https://github.com/madmann91/proto),
 and [bvh](https://github.com/madmann91/bvh) (`v2` branch).
-First, make sure you have downloaded all the submodules, by running:
+Additionally, SoL can use libpng, libjpeg, and libtiff when those are present on the system.
+These libraries are not required to build a working version of SoL, but without them, it can only load and save EXR image files.
+
+Before building, make sure you have downloaded all the submodules, by running:
 
     git submodule update --init --recursive
 
