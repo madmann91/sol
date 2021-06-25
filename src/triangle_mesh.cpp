@@ -27,7 +27,7 @@ template <typename Builder>
 using TopDownScheduler = bvh::ParallelTopDownScheduler<Builder>;
 #else
 template <typename Builder>
-using TopDownScheduler = bvh::SequentialTopDownBuilder<Builder>;
+using TopDownScheduler = bvh::SequentialTopDownScheduler<Builder>;
 #endif
 
 TriangleMesh::TriangleMesh(
