@@ -56,7 +56,7 @@ std::optional<Image> load(const std::string_view& path) {
         jpeg_finish_decompress(&decompress_info);
         jpeg_destroy_decompress(&decompress_info);
         final_image = std::make_optional(std::move(image));
-    } catch(std::exception& e) {
+    } catch (std::exception& e) {
         // Do nothing
     }
 
