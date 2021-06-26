@@ -77,7 +77,8 @@ public:
 
     /// Computes the balance heuristic given the probability density values for two techniques.
     static inline float balance_heuristic(float x, float y) {
-        return x / (x + y);
+        // More robust than x / (x + y), for when x, y = +-inf
+        return 1.0f / (1.0f + y / x);
     }
 
 protected:
