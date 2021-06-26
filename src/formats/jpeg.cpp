@@ -35,7 +35,7 @@ std::optional<Image> load(const std::string_view& path) {
 
         jpeg_stdio_src(&decompress_info, file);
 
-        jpeg_read_header(&decompress_info, true);
+        jpeg_read_header(&decompress_info, TRUE);
         jpeg_start_decompress(&decompress_info);
         size_t width = decompress_info.output_width;
         size_t height = decompress_info.output_height;
