@@ -10,4 +10,6 @@ find_dependency(TBB)
 find_dependency(bvh)
 find_dependency(proto)
 find_dependency(Threads)
+@SOL_DEPENDS_TBB@
+@SOL_DEPENDS_OMP@
 include("${CMAKE_CURRENT_LIST_DIR}/sol-targets.cmake")

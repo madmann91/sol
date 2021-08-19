@@ -4,15 +4,18 @@
 #include <string_view>
 #include <string>
 #include <memory>
-#include <ranges>
 #include <algorithm>
-#include <execution>
 
 #include <proto/hash.h>
 #include <proto/utils.h>
 
 #include "sol/samplers.h"
 #include "sol/scene.h"
+
+#if defined(SOL_ENABLE_TBB)
+#define TBB_SUPPRESS_DEPRECATED_MESSAGES 1
+#include <tbb/tbb.h>
+#endif
 
 namespace sol {
 
@@ -37,6 +40,7 @@ public:
     /// variable can be used to retrace a particular set of samples.
     virtual void render(Image& image, size_t sample_index, size_t sample_count = 1) const = 0;
 
+protected:
     /// Processes each tile of the given range `[0,w]x[0,h]` in parallel.
     /// The size of each tile is given 
     template <typename F>
@@ -45,21 +49,29 @@ public:
         size_t tile_w = default_tile_size,
         size_t tile_h = default_tile_size)
     {
-        auto range_y = std::views::iota(size_t{0}, proto::round_up(h, tile_h) / tile_h);
-        auto range_x = std::views::iota(size_t{0}, proto::round_up(w, tile_w) / tile_w);
-        std::for_each(
-            std::execution::par_unseq,
-            range_y.begin(), range_y.end(),
-            [&] (size_t tile_y) {
-                size_t y = tile_y * tile_h;
-                std::for_each(
-                    std::execution::par_unseq,
-                    range_x.begin(), range_x.end(),
-                    [&] (size_t tile_x) {
+#if defined(SOL_ENABLE_TBB)
+        tbb::parallel_for(
+            tbb::blocked_range2d(
+                size_t{0}, proto::round_up(h, tile_h) / tile_h,
+                size_t{0}, proto::round_up(w, tile_w) / tile_w),
+            [&] (auto& range) {
+                for (auto tile_y = range.rows().begin(); tile_y < range.rows().end(); ++tile_y) {
+                    for (auto tile_x = range.cols().begin(); tile_x < range.cols().end(); ++tile_x) {
+                        size_t y = tile_y * tile_h;
                         size_t x = tile_x * tile_w;
                         f(x, y, std::min(x + tile_w, w), std::min(y + tile_h, h));
-                    });
+                    }
+                }
             });
+#else
+    #if defined(SOL_ENABLE_OMP)
+        #pragma omp parallel for collapse(2) schedule(dynamic)
+    #endif
+        for (size_t y = 0; y < h; y += tile_h) {
+            for (size_t x = 0; x < w; x += tile_w)
+                f(x, y, std::min(x + tile_w, w), std::min(y + tile_h, h));
+        }
+#endif
     }
 
     /// Generates a seed suitable to initialize a sampler, given a frame index, and a pixel position (2D).
@@ -81,7 +93,6 @@ public:
         return 1.0f / (1.0f + y / x);
     }
 
-protected:
     std::string name_;
     const Scene& scene_;
 };

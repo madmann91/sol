@@ -1,16 +1,27 @@
 #include <ranges>
 #include <numeric>
-#include <execution>
 
 #include <proto/triangle.h>
 
 #include <bvh/bvh.h>
 #include <bvh/sweep_sah_builder.h>
-#ifdef BVH_ENABLE_TBB
-#include <bvh/parallel_top_down_scheduler.h>
+#if defined(SOL_ENABLE_TBB)
+#include <bvh/tbb/parallel_top_down_scheduler.h>
+#include <bvh/tbb/parallel_loop_scheduler.h>
+#include <bvh/tbb/parallel_reduction_scheduler.h>
+#include <bvh/tbb/parallel_sort_algorithm.h>
+#elif defined(SOL_ENABLE_OMP)
+#include <bvh/omp/parallel_top_down_scheduler.h>
+#include <bvh/omp/parallel_loop_scheduler.h>
+#include <bvh/omp/parallel_reduction_scheduler.h>
+#include <bvh/sequential_sort_algorithm.h>
 #else
 #include <bvh/sequential_top_down_scheduler.h>
+#include <bvh/sequential_loop_scheduler.h>
+#include <bvh/sequential_reduction_scheduler.h>
+#include <bvh/sequential_sort_algorithm.h>
 #endif
+#include <bvh/topology_modifier.h>
 #include <bvh/sequential_reinsertion_optimizer.h>
 #include <bvh/single_ray_traverser.h>
 
@@ -22,12 +33,24 @@ namespace sol {
 using Bvh = bvh::Bvh<float>;
 struct TriangleMesh::BvhData { Bvh bvh; };
 
-#ifdef BVH_ENABLE_TBB
+#if defined(SOL_ENABLE_TBB)
 template <typename Builder>
-using TopDownScheduler = bvh::ParallelTopDownScheduler<Builder>;
+using TopDownScheduler   = bvh::tbb::ParallelTopDownScheduler<Builder>;
+using LoopScheduler      = bvh::tbb::ParallelLoopScheduler;
+using ReductionScheduler = bvh::tbb::ParallelReductionScheduler;
+using SortAlgorithm      = bvh::tbb::ParallelSortAlgorithm;
+#elif defined(SOL_ENABLE_OMP)
+template <typename Builder>
+using TopDownScheduler   = bvh::omp::ParallelTopDownScheduler<Builder>;
+using LoopScheduler      = bvh::omp::ParallelLoopScheduler;
+using ReductionScheduler = bvh::omp::ParallelReductionScheduler;
+using SortAlgorithm      = bvh::SequentialSortAlgorithm;
 #else
 template <typename Builder>
-using TopDownScheduler = bvh::SequentialTopDownScheduler<Builder>;
+using TopDownScheduler   = bvh::SequentialTopDownScheduler<Builder>;
+using LoopScheduler      = bvh::SequentialLoopScheduler;
+using ReductionScheduler = bvh::SequentialReductionScheduler;
+using SortAlgorithm      = bvh::SequentialSortAlgorithm;
 #endif
 
 TriangleMesh::TriangleMesh(
@@ -105,45 +128,47 @@ bool TriangleMesh::intersect_any(const proto::Rayf& init_ray) const {
 }
 
 std::unique_ptr<TriangleMesh::BvhData> TriangleMesh::build_bvh(const std::vector<proto::Vec3f>& vertices) const {
+    using Builder = bvh::SweepSahBuilder<Bvh>;
+
+    ReductionScheduler reduction_scheduler;
+    TopDownScheduler<Builder> top_down_scheduler;
+    LoopScheduler loop_scheduler;
+    SortAlgorithm sort_algorithm;
+
     auto bboxes  = std::make_unique<proto::BBoxf[]>(triangle_count());
     auto centers = std::make_unique<proto::Vec3f[]>(triangle_count());
 
     // Compute bounding boxes and centers in parallel
-    auto range = std::views::iota(size_t{0}, triangle_count());
-    auto global_bbox = std::transform_reduce(
-        std::execution::par_unseq,
-        range.begin(), range.end(), proto::BBoxf::empty(),
+    auto global_bbox = reduction_scheduler.run(
+        size_t{0}, triangle_count(), proto::BBoxf::empty(),
         [] (proto::BBoxf left, const proto::BBoxf& right) { return left.extend(right); },
-        [&] (size_t i) {
+        [&] (size_t i) -> proto::BBoxf {
             auto triangle = proto::Trianglef(
                 vertices[indices_[i * 3 + 0]],
                 vertices[indices_[i * 3 + 1]],
                 vertices[indices_[i * 3 + 2]]);
-            auto bbox = triangle.bbox();
-            bboxes[i]  = bbox;
+            auto bbox  = triangle.bbox();
             centers[i] = triangle.center();
-            return bbox;
+            return bboxes[i] = bbox;
         });
 
-    using Builder = bvh::SweepSahBuilder<Bvh>;
-    TopDownScheduler<Builder> scheduler;
-    auto bvh = Builder::build(scheduler, global_bbox, bboxes.get(), centers.get(), triangle_count());
-    bvh::SequentialReinsertionOptimizer<Bvh>::optimize(bvh);
+    auto bvh = Builder::build(top_down_scheduler, sort_algorithm, global_bbox, bboxes.get(), centers.get(), triangle_count());
+    bvh::TopologyModifier topo_modifier(bvh, bvh.parents(loop_scheduler));
+    bvh::SequentialReinsertionOptimizer<Bvh>::optimize(topo_modifier);
     return std::make_unique<BvhData>(std::move(bvh));
 }
 
 std::vector<proto::PrecomputedTrianglef> TriangleMesh::build_triangles(const std::vector<proto::Vec3f>& vertices) const {
     // Build a permuted array of triangles, so as to avoid indirections when intersecting the mesh with a ray.
-    auto range = std::views::iota(size_t{0}, triangle_count());
+    LoopScheduler loop_scheduler;
     std::vector<proto::PrecomputedTrianglef> triangles(triangle_count());
-    std::for_each(std::execution::par_unseq, range.begin(), range.end(),
-        [&] (size_t i) {
-            auto j = bvh_data_->bvh.prim_indices[i];
-            triangles[i] = proto::PrecomputedTrianglef(
-                vertices[indices_[j * 3 + 0]],
-                vertices[indices_[j * 3 + 1]],
-                vertices[indices_[j * 3 + 2]]);
-        });
+    loop_scheduler.run(size_t{0}, triangle_count(), [&] (size_t i) {
+        auto j = bvh_data_->bvh.prim_indices[i];
+        triangles[i] = proto::PrecomputedTrianglef(
+            vertices[indices_[j * 3 + 0]],
+            vertices[indices_[j * 3 + 1]],
+            vertices[indices_[j * 3 + 2]]);
+    });
     return triangles;
 }
 

@@ -1,3 +1,6 @@
+set(SOL_MULTITHREADING_FRAMEWORK None CACHE STRING "Multithreading framework to use in SoL")
+set_property(CACHE SOL_MULTITHREADING_FRAMEWORK PROPERTY STRINGS None TBB OpenMP)
+
 add_library(sol
     formats/png.cpp
     formats/jpeg.cpp
@@ -25,6 +28,26 @@ find_package(proto REQUIRED)
 find_package(bvh REQUIRED)
 find_package(Threads REQUIRED)
 
+if (SOL_MULTITHREADING_FRAMEWORK STREQUAL "TBB")
+    find_package(TBB REQUIRED)
+    if (TBB_FOUND)
+        target_compile_definitions(sol PUBLIC -DSOL_ENABLE_TBB)
+        target_link_libraries(sol PUBLIC TBB::tbb)
+        set(SOL_DEPENDS_TBB "find_dependency(TBB)")
+        message(STATUS "Building SoL with TBB")
+    endif ()
+elseif (SOL_MULTITHREADING_FRAMEWORK STREQUAL "OpenMP")
+    find_package(OpenMP REQUIRED)
+    if (OpenMP_FOUND)
+        target_compile_definitions(sol PUBLIC -DSOL_ENABLE_OMP)
+        target_link_libraries(sol PUBLIC OpenMP::OpenMP_CXX)
+        set(SOL_DEPENDS_OMP "find_dependency(OpenMP)")
+        message(STATUS "Building SoL with OpenMP")
+    endif ()
+else ()
+    message(STATUS "Building SoL without multithreading support")
+endif ()
+
 target_link_libraries(sol PUBLIC proto::proto Threads::Threads)
 target_link_libraries(sol PRIVATE bvh::bvh tomlplusplus tinyexr)
 target_include_directories(sol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -38,7 +61,7 @@ set_target_properties(sol PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 find_package(PNG QUIET)
 if (PNG_FOUND)
     message(STATUS "Adding PNG support")
-    target_compile_definitions(sol PRIVATE -DSOL_ENABLE_PNG)
+    target_compile_definitions(sol PUBLIC -DSOL_ENABLE_PNG)
     target_link_libraries(sol PRIVATE PNG::PNG)
 endif ()
 
