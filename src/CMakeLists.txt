@@ -48,7 +48,7 @@ else ()
     message(STATUS "Building SoL without multithreading support")
 endif ()
 
-target_link_libraries(sol PUBLIC proto::proto Threads::Threads)
+target_link_libraries(sol PUBLIC proto::proto par::par Threads::Threads)
 target_link_libraries(sol PRIVATE bvh::bvh tomlplusplus tinyexr)
 target_include_directories(sol PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(sol PUBLIC

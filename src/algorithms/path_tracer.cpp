@@ -8,20 +8,17 @@ namespace sol {
 
 void PathTracer::render(Image& image, size_t sample_index, size_t sample_count) const {
     using Sampler = PcgSampler;
-    Renderer::for_each_tile(image.width(), image.height(),
-        [&] (size_t xmin, size_t ymin, size_t xmax, size_t ymax) {
-            for (size_t y = ymin; y < ymax; ++y) {
-                for (size_t x = xmin; x < xmax; ++x) {
-                    auto color = Color::black();
-                    for (size_t i = 0; i < sample_count; ++i) {
-                        Sampler sampler(Renderer::pixel_seed(sample_index + i, x, y));
-                        auto ray = scene_.camera->generate_ray(
-                            Renderer::sample_pixel(sampler, x, y, image.width(), image.height()));
-                        color += trace_path(sampler, ray);
-                    }
-                    image.accumulate(x, y, color);
-                }
+    Renderer::for_each_pixel(
+        image.width(), image.height(),
+        [&] (size_t x, size_t y) {
+            auto color = Color::black();
+            for (size_t i = 0; i < sample_count; ++i) {
+                Sampler sampler(Renderer::pixel_seed(sample_index + i, x, y));
+                auto ray = scene_.camera->generate_ray(
+                    Renderer::sample_pixel(sampler, x, y, image.width(), image.height()));
+                color += trace_path(sampler, ray);
             }
+            image.accumulate(x, y, color);
         });
 }
 

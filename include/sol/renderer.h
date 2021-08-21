@@ -8,14 +8,18 @@
 
 #include <proto/hash.h>
 #include <proto/utils.h>
+#include <par/for_each.h>
+
+#if defined(SOL_ENABLE_TBB)
+#include <par/tbb/executors.h>
+#elif defined(SOL_ENABLE_OMP)
+#include <par/omp/executors.h>
+#else
+#include <par/sequential_executor.h>
+#endif
 
 #include "sol/samplers.h"
 #include "sol/scene.h"
-
-#if defined(SOL_ENABLE_TBB)
-#define TBB_SUPPRESS_DEPRECATED_MESSAGES 1
-#include <tbb/tbb.h>
-#endif
 
 namespace sol {
 
@@ -41,37 +45,17 @@ public:
     virtual void render(Image& image, size_t sample_index, size_t sample_count = 1) const = 0;
 
 protected:
-    /// Processes each tile of the given range `[0,w]x[0,h]` in parallel.
-    /// The size of each tile is given 
+    /// Processes each pixel of the given range `[0,w]x[0,h]` in parallel.
     template <typename F>
-    static inline void for_each_tile(
-        size_t w, size_t h, F&& f,
-        size_t tile_w = default_tile_size,
-        size_t tile_h = default_tile_size)
-    {
+    static inline void for_each_pixel(size_t w, size_t h, F&& f) {
 #if defined(SOL_ENABLE_TBB)
-        tbb::parallel_for(
-            tbb::blocked_range2d(
-                size_t{0}, proto::round_up(h, tile_h) / tile_h,
-                size_t{0}, proto::round_up(w, tile_w) / tile_w),
-            [&] (auto& range) {
-                for (auto tile_y = range.rows().begin(); tile_y < range.rows().end(); ++tile_y) {
-                    for (auto tile_x = range.cols().begin(); tile_x < range.cols().end(); ++tile_x) {
-                        size_t y = tile_y * tile_h;
-                        size_t x = tile_x * tile_w;
-                        f(x, y, std::min(x + tile_w, w), std::min(y + tile_h, h));
-                    }
-                }
-            });
+        par::tbb::Executor executor;
+#elif defined(SOL_ENABLE_OMP)
+        par::omp::DynamicExecutor executor;
 #else
-    #if defined(SOL_ENABLE_OMP)
-        #pragma omp parallel for collapse(2) schedule(dynamic)
-    #endif
-        for (size_t y = 0; y < h; y += tile_h) {
-            for (size_t x = 0; x < w; x += tile_w)
-                f(x, y, std::min(x + tile_w, w), std::min(y + tile_h, h));
-        }
+        par::SequentialExecutor executor;
 #endif
+        par::for_each(executor, par::range_2d(size_t{0}, w, size_t{0}, h), f);
     }
 
     /// Generates a seed suitable to initialize a sampler, given a frame index, and a pixel position (2D).

@@ -45,8 +45,10 @@ public:
 
 private:
     struct BvhData;
-    std::unique_ptr<BvhData> build_bvh(const std::vector<proto::Vec3f>&) const;
-    std::vector<proto::PrecomputedTrianglef> build_triangles(const std::vector<proto::Vec3f>&) const;
+    template <typename Executor>
+    std::unique_ptr<BvhData> build_bvh(Executor&, const std::vector<proto::Vec3f>&) const;
+    template <typename Executor>
+    std::vector<proto::PrecomputedTrianglef> build_triangles(Executor&, const std::vector<proto::Vec3f>&) const;
 
     std::vector<size_t> indices_;
     std::vector<proto::PrecomputedTrianglef> triangles_;
