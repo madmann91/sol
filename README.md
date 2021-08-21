@@ -24,9 +24,10 @@ Once all submodules have been downloaded and the dependencies have been download
 
     mkdir build
     cd build
-    cmake ..
+    cmake \
+        -Dproto_DIR=</path/to/proto> \
+        -Dpar_DIR=</path/to/par> \
+        -Dbvh_DIR=</path/to/bvh> \
+        -DSOL_MULTITHREADING_FRAMEWORK=<None|OpenMP|TBB> \
+        -DCMAKE_BUILD_TYPE=<Debug|Release|RelWithDebInfo>
     cmake --build .
-
-> It is recommended to install TBB, if you want to use all the cores during rendering.
-> On Linux distributions, this can be achieved via the package manager.
-> On other systems, please refer to the documentation available on the [TBB webpage](https://github.com/oneapi-src/oneTBB).
