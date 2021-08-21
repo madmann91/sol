@@ -10,7 +10,8 @@ SoL is provided as a library that can be embedded in other projects.
 The recommended way to build SoL is by cloning the meta-repository [Solar](https://github.com/madmann91/solar),
 which downloads and installs all dependencies automatically.
 
-If you prefer to do this manually, you will need Git, CMake, [proto](https://github.com/madmann91/proto),
+If you prefer to do this manually, you will need Git, CMake,
+[proto](https://github.com/madmann91/proto), [par](https://github.com/madmann91/par),
 and [bvh](https://github.com/madmann91/bvh) (`v2` branch).
 Additionally, SoL can use libpng, libjpeg, and libtiff when those are present on the system.
 These libraries are not required to build a working version of SoL, but without them, it can only load and save EXR image files.
