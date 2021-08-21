@@ -18,8 +18,7 @@ std::optional<Image> load(const std::string_view& path) {
 
     // Read signature
     png_byte sig[8];
-    fread(sig, 1, 8, file);
-    if (!png_sig_cmp(sig, 0, 8))
+    if (fread(sig, 1, 8, file) != 8 || !png_sig_cmp(sig, 0, 8))
         return std::nullopt;
 
     png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
