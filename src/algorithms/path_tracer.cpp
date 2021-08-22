@@ -9,7 +9,7 @@ namespace sol {
 void PathTracer::render(Image& image, size_t sample_index, size_t sample_count) const {
     using Sampler = PcgSampler;
     Renderer::for_each_pixel(
-        image.width(), image.height(),
+        executor_, image.width(), image.height(),
         [&] (size_t x, size_t y) {
             auto color = Color::black();
             for (size_t i = 0; i < sample_count; ++i) {

@@ -4,6 +4,14 @@
 #include "sol/renderer.h"
 #include "sol/color.h"
 
+#if defined(SOL_ENABLE_TBB)
+#include <par/tbb/executors.h>
+#elif defined(SOL_ENABLE_OMP)
+#include <par/omp/executors.h>
+#else
+#include <par/sequential_executor.h>
+#endif
+
 namespace sol {
 
 class Sampler;
@@ -33,6 +41,13 @@ public:
 private:
     Color trace_path(Sampler&, proto::Rayf) const;
 
+#if defined(SOL_ENABLE_TBB)
+    par::tbb::Executor executor_;
+#elif defined(SOL_ENABLE_OMP)
+    par::omp::DynamicExecutor executor_;
+#else
+    par::SequentialExecutor executor_;
+#endif
     Config config_;
 };
 

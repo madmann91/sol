@@ -10,14 +10,6 @@
 #include <proto/utils.h>
 #include <par/for_each.h>
 
-#if defined(SOL_ENABLE_TBB)
-#include <par/tbb/executors.h>
-#elif defined(SOL_ENABLE_OMP)
-#include <par/omp/executors.h>
-#else
-#include <par/sequential_executor.h>
-#endif
-
 #include "sol/samplers.h"
 #include "sol/scene.h"
 
@@ -28,9 +20,6 @@ struct Image;
 /// Base class for all rendering algorithms.
 class Renderer {
 public:
-    /// Default value for the size of each tile when calling `for_each_tile()`.
-    static constexpr size_t default_tile_size = 32;
-
     Renderer(const std::string_view& name, const Scene& scene)
         : name_(name), scene_(scene)
     {}
@@ -46,15 +35,8 @@ public:
 
 protected:
     /// Processes each pixel of the given range `[0,w]x[0,h]` in parallel.
-    template <typename F>
-    static inline void for_each_pixel(size_t w, size_t h, F&& f) {
-#if defined(SOL_ENABLE_TBB)
-        par::tbb::Executor executor;
-#elif defined(SOL_ENABLE_OMP)
-        par::omp::DynamicExecutor executor;
-#else
-        par::SequentialExecutor executor;
-#endif
+    template <typename Executor, typename F>
+    static inline void for_each_pixel(Executor& executor, size_t w, size_t h, const F& f) {
         par::for_each(executor, par::range_2d(size_t{0}, w, size_t{0}, h), f);
     }
 
