@@ -142,7 +142,7 @@ std::unique_ptr<TriangleMesh::BvhData> TriangleMesh::build_bvh(Executor& executo
     auto bvh = Builder::build(top_down_scheduler, executor, global_bbox, bboxes.get(), centers.get(), triangle_count());
     bvh::TopologyModifier topo_modifier(bvh, bvh.parents(executor));
     bvh::SequentialReinsertionOptimizer<Bvh>::optimize(topo_modifier);
-    return std::make_unique<BvhData>(std::move(bvh));
+    return std::make_unique<BvhData>(BvhData { std::move(bvh) });
 }
 
 template <typename Executor>

@@ -42,7 +42,7 @@ struct SamplableShape {
 
     template <typename Hasher>
     Hasher& hash(Hasher& hasher) const { return shape.hash(hasher); }
-    bool operator == (const Derived& other) const { return shape == other.shape; }
+    bool operator == (const SamplableShape& other) const { return shape == other.shape; }
 };
 
 /// A uniformly-sampled triangle.
