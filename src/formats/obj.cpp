@@ -421,7 +421,7 @@ static void check_materials(File& file, const MaterialLib& material_lib, bool is
     }
 }
 
-static std::unique_ptr<Scene::Node> build_mesh(
+static std::unique_ptr<TriangleMesh> build_mesh(
     SceneLoader& scene_loader,
     const File& file,
     const MaterialLib& material_lib,
@@ -515,7 +515,7 @@ static std::unique_ptr<Scene::Node> build_mesh(
         std::move(lights));
 }
 
-std::unique_ptr<Scene::Node> load(SceneLoader& scene_loader, const std::string_view& file_name) {
+std::unique_ptr<TriangleMesh> load(SceneLoader& scene_loader, const std::string_view& file_name) {
     static constexpr bool is_strict = false;
 
     auto file = parse_obj(std::string(file_name), is_strict);

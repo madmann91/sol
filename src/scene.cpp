@@ -3,6 +3,7 @@
 #include "sol/lights.h"
 #include "sol/cameras.h"
 #include "sol/textures.h"
+#include "sol/geometry.h"
 
 namespace sol {
 

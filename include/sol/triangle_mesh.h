@@ -6,14 +6,14 @@
 
 #include <proto/triangle.h>
 
-#include "sol/scene.h"
+#include "sol/geometry.h"
 
 namespace sol {
 
 class Light;
 
 /// Triangle mesh with an underlying acceleration data structure to speed up intersection tests.
-class TriangleMesh : public Scene::Node {
+class TriangleMesh : public Geometry {
 public:
     TriangleMesh(
         std::vector<size_t>&& indices,

@@ -4,6 +4,8 @@
 #include "sol/renderer.h"
 #include "sol/color.h"
 
+#include <proto/ray.h>
+
 #if defined(SOL_ENABLE_TBB)
 #include <par/tbb/executors.h>
 #elif defined(SOL_ENABLE_OMP)

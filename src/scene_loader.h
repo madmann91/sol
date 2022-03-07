@@ -76,11 +76,11 @@ public:
         return get_or_insert<T, Light>(lights_, scene_.lights, std::forward<Args>(args)...); 
     }
 
-    void insert_node(const std::string&, std::unique_ptr<Scene::Node>&&);
+    void insert_geom(const std::string&, std::unique_ptr<Geometry>&&);
 
 private:
     std::unique_ptr<Camera> create_camera(const toml::table&);
-    void create_node(const toml::table&, const std::string&);
+    void create_geom(const toml::table&, const std::string&);
 
     template <typename T, typename U, typename Set, typename Container, typename... Args>
     static const U* get_or_insert(Set& set, Container& container, Args&&... args) {
@@ -116,7 +116,7 @@ private:
     std::unordered_set<const Texture*, Hash, Compare> textures_;
 
     std::unordered_map<std::string, const Image*> images_;
-    std::unordered_map<std::string, std::unique_ptr<Scene::Node>> nodes_;
+    std::unordered_map<std::string, std::unique_ptr<Geometry>> geoms_;
 
     std::ostream* err_out_;
 };

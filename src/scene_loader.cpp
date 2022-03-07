@@ -8,6 +8,7 @@
 #include "sol/bsdfs.h"
 #include "sol/lights.h"
 #include "sol/image.h"
+#include "sol/geometry.h"
 
 namespace sol {
 
@@ -51,16 +52,16 @@ void SceneLoader::load_and_throw_on_error(const std::string& file_name) {
     auto table = toml::parse(is, file_name);
     if (auto camera = table["camera"].as_table())
         scene_.camera = create_camera(*camera);
-    if (auto nodes = table["nodes"].as_array()) {
-        for (auto& node : *nodes) {
-            if (auto table = node.as_table())
-                create_node(*table, base_dir);
+    if (auto geoms = table["geoms"].as_array()) {
+        for (auto& geom : *geoms) {
+            if (auto table = geom.as_table())
+                create_geom(*table, base_dir);
         }
     }
-    auto root_node = table["root_node"].value_or<std::string>("");
-    if (!nodes_.contains(root_node))
-        throw std::runtime_error("Root node named '" + root_node + "' cannot be found");
-    scene_.root_node = std::move(nodes_[root_node]);
+    auto root_name = table["root"].value_or<std::string>("");
+    if (!geoms_.contains(root_name))
+        throw std::runtime_error("Root geometry named '" + root_name + "' cannot be found");
+    scene_.root = std::move(geoms_[root_name]);
 }
 
 const Image* SceneLoader::load_image(const std::string& file_name) {
@@ -76,9 +77,9 @@ const Image* SceneLoader::load_image(const std::string& file_name) {
     return nullptr;
 }
 
-void SceneLoader::insert_node(const std::string& name, std::unique_ptr<Scene::Node>&& node) {
-    if (!nodes_.emplace(name, std::move(node)).second)
-        throw std::runtime_error("Duplicate node found with name '" + name + "'");
+void SceneLoader::insert_geom(const std::string& name, std::unique_ptr<Geometry>&& geom) {
+    if (!geoms_.emplace(name, std::move(geom)).second)
+        throw std::runtime_error("Duplicate geometry found with name '" + name + "'");
 }
 
 std::unique_ptr<Camera> SceneLoader::create_camera(const toml::table& table) {
@@ -94,13 +95,13 @@ std::unique_ptr<Camera> SceneLoader::create_camera(const toml::table& table) {
     throw SourceError::from_toml(table.source(), "Unknown camera type '" + type + "'");
 }
 
-void SceneLoader::create_node(const toml::table& table, const std::string& base_dir) {
+void SceneLoader::create_geom(const toml::table& table, const std::string& base_dir) {
     auto name = table["name"].value_or<std::string>("");
     auto type = table["type"].value_or<std::string>("");
     if (type == "import") {
         auto file = table["file"].value_or<std::string>("");
         if (file.ends_with(".obj"))
-            return insert_node(name, obj::load(*this, base_dir + "/" + file));
+            return insert_geom(name, obj::load(*this, base_dir + "/" + file));
         throw SourceError::from_toml(table.source(), "Unknown file format for '" + file + "'");
     }
     throw SourceError::from_toml(table.source(), "Unknown node type '" + type + "'");

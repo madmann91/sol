@@ -39,7 +39,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
     auto color = Color::black();
 
     for (size_t path_len = 0; path_len < config_.max_path_len; path_len++) {
-        auto hit = scene_.intersect_closest(ray);
+        auto hit = scene_.root->intersect_closest(ray);
         if (!hit)
             break;
 
@@ -71,7 +71,7 @@ Color PathTracer::trace_path(Sampler& sampler, proto::Rayf ray) const {
                 auto cos_surf = proto::dot(in_dir, hit->surf_info.normal());
                 auto shadow_ray = proto::Rayf::between_points(hit->surf_info.point, light_sample->pos, config_.ray_offset);
 
-                if (!scene_.intersect_any(shadow_ray)) {
+                if (!scene_.root->intersect_any(shadow_ray)) {
                     // Normalize the incoming direction
                     auto inv_light_dist = 1.0f / proto::length(in_dir);
                     cos_surf *= inv_light_dist;

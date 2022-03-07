@@ -8,7 +8,7 @@
 #include <proto/hash.h>
 
 #include "sol/color.h"
-#include "sol/scene.h"
+#include "sol/geometry.h"
 
 namespace sol {
 
