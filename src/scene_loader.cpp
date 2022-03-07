@@ -52,7 +52,7 @@ void SceneLoader::load_and_throw_on_error(const std::string& file_name) {
     auto table = toml::parse(is, file_name);
     if (auto camera = table["camera"].as_table())
         scene_.camera = create_camera(*camera);
-    if (auto geoms = table["geoms"].as_array()) {
+    if (auto geoms = table["objects"].as_array()) {
         for (auto& geom : *geoms) {
             if (auto table = geom.as_table())
                 create_geom(*table, base_dir);

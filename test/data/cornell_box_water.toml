@@ -1,4 +1,4 @@
-root_node = "CornellBox"
+root = "CornellBox"
 
 [camera]
 type = "perspective"
@@ -7,7 +7,7 @@ dir = [0, 0, -1]
 up  = [0, 1, 0]
 fov = 60
 
-[[nodes]]
+[[objects]]
 name = "CornellBox"
 type = "import"
 file = "cornell_box_water.obj"
